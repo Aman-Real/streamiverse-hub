@@ -10,6 +10,10 @@ import Movies from "./pages/Movies.tsx";
 import Series from "./pages/Series.tsx";
 import MyList from "./pages/MyList.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import Profile from "./pages/Profile.tsx";
+import WatchHistory from "./pages/WatchHistory.tsx";
+import Settings from "./pages/Settings.tsx";
+import HelpCenter from "./pages/HelpCenter.tsx";
 
 const queryClient = new QueryClient();
 
