@@ -18,7 +18,7 @@
 *   **Interactive Video Cards**: Hover-sensitive cards providing quick previews and metadata.
 
 ### 🛠 Personalization & Management
-*   **My List**: Add or remove titles from a personalized collection using a global state provider.
+*   **My List**: Add or remove titles from a personalized collection using a global state provider via `useMyList`.
 *   **Watch History**: Track exactly where you left off with persistent progress bars for every title.
 *   **Notification System**: Integrated alert panel for new releases and account updates.
 *   **Profile Management**: Customizable user profiles and account settings.
@@ -29,77 +29,68 @@
 *   **Help Center**: Comprehensive FAQ section with interactive accordions and support links.
 
 ### 📱 Technical Excellence
-*   **Responsive Design**: Optimized for mobile, tablet, and desktop using Tailwind CSS and custom hooks.
+*   **Responsive Design**: Optimized for mobile, tablet, and desktop using Tailwind CSS and custom hooks like `use-mobile`.
 *   **Performance**: Built on Vite for lightning-fast HMR and optimized production builds.
 *   **Type Safety**: 100% TypeScript implementation for robust development.
-
----
-
 ## 🛠 Tech Stack
 
 | Category | Technology |
 | --- | --- |
 | **Frontend** | React 18, TypeScript, Vite |
 | **Styling** | Tailwind CSS, Lucide React (Icons), Shadcn/UI |
-| **State/Data** | TanStack Query (React Query), Context API |
+| **State/Data** | TanStack Query, Context API |
 | **Routing** | React Router DOM v6 |
 | **UI Components** | Radix UI (Accordion, Dialog, Dropdown, etc.) |
 | **Testing** | Vitest, Testing Library |
-| **Forms** | React Hook Form, Zod |
-
----
-
+| **Package Manager** | Bun, NPM |
 ## 🏗 Architecture
 
 The project follows a modular React architecture focused on reusability and separation of concerns:
 
-```text
+text
 src/
 ├── components/       # Atomic UI components and layout elements
 │   ├── ui/           # Shadcn/UI base components
 │   └── ...           # Feature-specific components (VideoPlayer, Navbar)
-├── hooks/            # Custom React hooks (useMyList, useNotifications)
+├── hooks/            # Custom React hooks (useMyList, useNotifications, use-mobile)
 ├── lib/              # Utility functions and mock data (videoData.ts)
-├── pages/            # View components mapped to routes
+├── pages/            # View components mapped to routes (Movies, Series, Profile)
 ├── assets/           # Static images and styles
+├── test/             # Test setup and example suites
 └── App.tsx           # Root component with Providers and Routing
-```
-
----
 
 ## 🚦 Getting Started
 
 ### Prerequisites
 *   **Node.js**: v18.0.0 or higher
-*   **Package Manager**: npm, bun, or yarn
+*   **Package Manager**: Bun (recommended) or NPM
 
 ### Installation
 
 1.  **Clone the repository**
-    ```bash
+    bash
     git clone https://github.com/Aman-Real/streamiverse-hub.git
     cd streamiverse-hub
-    ```
+    
 
 2.  **Install dependencies**
-    ```bash
-    npm install
-    # OR
+    bash
     bun install
-    ```
+    # OR
+    npm install
+    
 
 3.  **Start the development server**
-    ```bash
+    bash
+    bun dev
+    # OR
     npm run dev
-    ```
+    
 
 4.  **Build for production**
-    ```bash
-    npm run build
-    ```
-
----
-
+    bash
+    bun run build
+    
 ## 📖 Usage Examples
 
 ### Adding to "My List"
@@ -131,13 +122,15 @@ The `VideoPlayer` component tracks progress and communicates updates back to the
 
 The project uses a standard Vite configuration. Environment variables can be added to a `.env` file in the root:
 
-```env
+env
 VITE_APP_TITLE=STREAMIX
 VITE_API_URL=https://api.example.com
-```
 
----
 
+Key configuration files:
+*   `vite.config.ts`: Vite bundler and plugin configuration
+*   `tailwind.config.ts`: Tailwind CSS theme and plugin setup
+*   `tsconfig.json`: TypeScript compiler settings
 ## 🧪 Testing
 
 The project uses **Vitest** for unit and component testing.
