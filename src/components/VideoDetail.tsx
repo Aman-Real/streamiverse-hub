@@ -1,5 +1,6 @@
-import { X, Play, Plus, ThumbsUp } from "lucide-react";
+import { X, Play, Plus, Check, ThumbsUp } from "lucide-react";
 import { Video } from "@/lib/videoData";
+import { useMyList } from "@/hooks/useMyList";
 
 interface VideoDetailProps {
   video: Video;
@@ -8,6 +9,9 @@ interface VideoDetailProps {
 }
 
 const VideoDetail = ({ video, onClose, onPlay }: VideoDetailProps) => {
+  const { isInList, toggleList } = useMyList();
+  const inList = isInList(video.id);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-stream-overlay/80 backdrop-blur-sm" onClick={onClose}>
       <div className="relative w-full max-w-2xl mx-4 bg-card rounded-lg overflow-hidden shadow-2xl animate-fade-in" onClick={e => e.stopPropagation()}>
@@ -19,7 +23,13 @@ const VideoDetail = ({ video, onClose, onPlay }: VideoDetailProps) => {
             <h2 className="text-2xl font-bold text-foreground mb-2">{video.title}</h2>
             <div className="flex gap-2">
               <button onClick={() => onPlay(video)} className="flex items-center gap-1.5 bg-foreground text-background px-5 py-2 rounded-sm text-sm font-semibold hover:bg-foreground/90 transition-colors"><Play className="w-4 h-4 fill-current" /> Play</button>
-              <button className="w-9 h-9 rounded-full border border-muted-foreground/40 flex items-center justify-center text-foreground hover:border-foreground transition-colors"><Plus className="w-4 h-4" /></button>
+              <button
+                onClick={() => toggleList(video)}
+                className={`w-9 h-9 rounded-full border flex items-center justify-center transition-colors ${inList ? "border-primary bg-primary/20 text-primary" : "border-muted-foreground/40 text-foreground hover:border-foreground"}`}
+                title={inList ? "Remove from My List" : "Add to My List"}
+              >
+                {inList ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+              </button>
               <button className="w-9 h-9 rounded-full border border-muted-foreground/40 flex items-center justify-center text-foreground hover:border-foreground transition-colors"><ThumbsUp className="w-4 h-4" /></button>
             </div>
           </div>
