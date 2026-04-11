@@ -30,6 +30,10 @@ const App = () => (
               <Route path="/movies" element={<Movies />} />
               <Route path="/series" element={<Series />} />
               <Route path="/my-list" element={<MyList />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/watch-history" element={<WatchHistory />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/help" element={<HelpCenter />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
