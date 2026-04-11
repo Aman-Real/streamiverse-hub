@@ -174,4 +174,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 For support, email support@streamix.app or visit the **Help Center** within the application.
 
-Developed with ❤️ by [Aman](https://github.com/Aman-Real)
+Developed by [Aman](https://github.com/Aman-Real)
