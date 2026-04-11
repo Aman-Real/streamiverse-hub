@@ -41,8 +41,8 @@ const Navbar = ({ onSearch }: NavbarProps) => {
           ))}
         </div>
       </div>
-      <div className="flex items-center gap-4">
-        <div className="flex items-center">
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {searchOpen && (
             <input
               autoFocus
@@ -50,17 +50,22 @@ const Navbar = ({ onSearch }: NavbarProps) => {
               onChange={e => { setQuery(e.target.value); onSearch(e.target.value); }}
               onBlur={() => { if (!query) setSearchOpen(false); }}
               placeholder="Search titles..."
-              className="bg-secondary border border-border rounded-sm px-3 py-1.5 text-sm text-foreground w-48 mr-2 focus:outline-none focus:ring-1 focus:ring-primary"
+              className="h-10 bg-secondary border border-border rounded-sm px-3 text-sm text-foreground w-48 focus:outline-none focus:ring-1 focus:ring-primary"
             />
           )}
-          <button onClick={() => setSearchOpen(!searchOpen)} className="text-foreground hover:text-primary transition-colors">
+          <button
+            onClick={() => setSearchOpen(!searchOpen)}
+            className="h-10 w-10 flex items-center justify-center rounded-sm text-foreground hover:text-primary transition-colors"
+            aria-label="Toggle search"
+          >
             <Search className="w-5 h-5" />
           </button>
         </div>
         <div className="relative">
           <button
             onClick={() => { setNotifOpen(!notifOpen); setProfileOpen(false); }}
-            className="text-foreground hover:text-primary transition-colors relative"
+            className="h-10 w-10 flex items-center justify-center rounded-sm text-foreground hover:text-primary transition-colors relative"
+            aria-label="Open notifications"
           >
             <Bell className="w-5 h-5" />
             {unreadCount > 0 && (
@@ -74,7 +79,8 @@ const Navbar = ({ onSearch }: NavbarProps) => {
         <div className="relative">
           <button
             onClick={() => { setProfileOpen(!profileOpen); setNotifOpen(false); }}
-            className="w-8 h-8 rounded-sm bg-primary flex items-center justify-center hover:bg-primary/80 transition-colors"
+            className="h-10 w-10 rounded-sm bg-primary flex items-center justify-center hover:bg-primary/80 transition-colors"
+            aria-label="Open profile"
           >
             <User className="w-4 h-4 text-primary-foreground" />
           </button>

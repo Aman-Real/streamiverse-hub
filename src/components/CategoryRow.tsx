@@ -21,18 +21,18 @@ const CategoryRow = ({ title, videos, onPlay, onInfo }: CategoryRowProps) => {
 
   return (
     <section className="relative px-6 md:px-12 mb-10">
-      <h3 className="text-lg font-semibold text-foreground mb-4">{title}</h3>
+      <h3 className="text-lg font-semibold text-foreground tracking-wide mb-4">{title}</h3>
       <div className="group/row relative">
-        <button onClick={() => scroll(-1)} className="absolute left-0 top-0 bottom-8 z-10 w-10 bg-gradient-to-r from-background to-transparent flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity">
-          <ChevronLeft className="w-6 h-6 text-foreground" />
+        <button onClick={() => scroll(-1)} className="absolute left-0 top-0 bottom-8 z-10 h-12 w-12 bg-gradient-to-r from-background to-transparent flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity rounded-full">
+          <ChevronLeft className="w-7 h-7 text-foreground" />
         </button>
         <div ref={scrollRef} className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
           {videos.map(v => (
             <VideoCard key={v.id} video={v} onPlay={onPlay} onInfo={onInfo} />
           ))}
         </div>
-        <button onClick={() => scroll(1)} className="absolute right-0 top-0 bottom-8 z-10 w-10 bg-gradient-to-l from-background to-transparent flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity">
-          <ChevronRight className="w-6 h-6 text-foreground" />
+        <button onClick={() => scroll(1)} className="absolute right-0 top-0 bottom-8 z-10 h-12 w-12 bg-gradient-to-l from-background to-transparent flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity rounded-full">
+          <ChevronRight className="w-7 h-7 text-foreground" />
         </button>
       </div>
     </section>
