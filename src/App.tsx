@@ -10,6 +10,10 @@ import Movies from "./pages/Movies.tsx";
 import Series from "./pages/Series.tsx";
 import MyList from "./pages/MyList.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import Profile from "./pages/Profile.tsx";
+import WatchHistory from "./pages/WatchHistory.tsx";
+import Settings from "./pages/Settings.tsx";
+import HelpCenter from "./pages/HelpCenter.tsx";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +30,10 @@ const App = () => (
               <Route path="/movies" element={<Movies />} />
               <Route path="/series" element={<Series />} />
               <Route path="/my-list" element={<MyList />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/watch-history" element={<WatchHistory />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/help" element={<HelpCenter />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

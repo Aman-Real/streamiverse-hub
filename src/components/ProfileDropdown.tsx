@@ -13,11 +13,11 @@ const ProfileDropdown = ({ open, onClose }: ProfileDropdownProps) => {
   if (!open) return null;
 
   const menuItems = [
-    { icon: User, label: "My Profile", action: () => toast.info("Profile page coming soon!") },
+    { icon: User, label: "My Profile", action: () => navigate("/profile") },
     { icon: Heart, label: "My List", action: () => navigate("/my-list") },
-    { icon: History, label: "Watch History", action: () => toast.info("Watch history coming soon!") },
-    { icon: Settings, label: "Settings", action: () => toast.info("Settings page coming soon!") },
-    { icon: HelpCircle, label: "Help Center", action: () => toast.info("Help center coming soon!") },
+    { icon: History, label: "Watch History", action: () => navigate("/watch-history") },
+    { icon: Settings, label: "Settings", action: () => navigate("/settings") },
+    { icon: HelpCircle, label: "Help Center", action: () => navigate("/help") },
   ];
 
   return (
