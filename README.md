@@ -39,10 +39,12 @@
 | **Frontend** | React 18, TypeScript, Vite |
 | **Styling** | Tailwind CSS, Lucide React (Icons), Shadcn/UI |
 | **State/Data** | TanStack Query, Context API |
-| **Routing** | React Router DOM v6 |
+| **Routing** | React Router DOM |
 | **UI Components** | Radix UI (Accordion, Dialog, Dropdown, etc.) |
 | **Testing** | Vitest, Testing Library |
-| **Package Manager** | Bun, NPM |
+| **Package Manager** | Bun |
+
+TypeScript is preferred in this project to provide robust type safety, catch potential errors during development, and enhance the developer experience with superior IDE tooling and autocompletion.
 ## 🏗 Architecture
 
 The project follows a modular React architecture focused on reusability and separation of concerns:
