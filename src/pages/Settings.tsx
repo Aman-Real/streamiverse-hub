@@ -1,17 +1,15 @@
-import { Settings as SettingsIcon, Monitor, Bell, Shield, Globe } from "lucide-react";
-import Navbar from "@/components/Navbar";
+import { Bell, Globe, Monitor, Settings as SettingsIcon, Shield } from "lucide-react";
 import { useState } from "react";
+import PageShell from "@/components/layout/PageShell";
 import { Switch } from "@/components/ui/switch";
 
 const Settings = () => {
-  const [search, setSearch] = useState("");
   const [autoplay, setAutoplay] = useState(true);
   const [notifications, setNotifications] = useState(true);
   const [hd, setHd] = useState(true);
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <Navbar onSearch={setSearch} />
+    <PageShell className="text-foreground">
       <div className="pt-24 px-6 max-w-2xl mx-auto">
         <h1 className="text-3xl font-bold flex items-center gap-3 mb-8"><SettingsIcon className="w-8 h-8" /> Settings</h1>
         <div className="space-y-6">
@@ -34,7 +32,7 @@ const Settings = () => {
             </div>
           </section>
           <section className="bg-card border border-border rounded-lg p-5 space-y-4">
-            <h2 className="font-semibold flex items-center gap-2"><Globe className="w-5 h-5 text-primary" /> Language & Region</h2>
+            <h2 className="font-semibold flex items-center gap-2"><Globe className="w-5 h-5 text-primary" /> Language &amp; Region</h2>
             <div className="flex justify-between items-center">
               <p className="text-sm">Language</p>
               <span className="text-sm text-muted-foreground">English</span>
@@ -50,7 +48,7 @@ const Settings = () => {
           </section>
         </div>
       </div>
-    </div>
+    </PageShell>
   );
 };
 

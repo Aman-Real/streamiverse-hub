@@ -1,46 +1,41 @@
-import { useState, useMemo, useCallback } from "react";
-import Navbar from "@/components/Navbar";
-import HeroBanner from "@/components/HeroBanner";
-import CategoryRow from "@/components/CategoryRow";
-import VideoPlayer from "@/components/VideoPlayer";
-import VideoDetail from "@/components/VideoDetail";
-import { videos as initialVideos, categories, Video } from "@/lib/videoData";
+import { useMemo } from "react";
+import PageShell from "@/components/layout/PageShell";
+import CatalogOverlays from "@/features/catalog/components/CatalogOverlays";
+import CategoryRow from "@/features/catalog/components/CategoryRow";
+import HeroBanner from "@/features/catalog/components/HeroBanner";
+import { useCatalogBrowser } from "@/features/catalog/hooks/useCatalogBrowser";
+import { useVideoLibrary } from "@/features/catalog/hooks/useVideoLibrary";
+import { buildHomeCategories, searchVideos } from "@/features/catalog/utils/catalog";
 
 const Index = () => {
-  const [videoList, setVideoList] = useState(initialVideos);
-  const [search, setSearch] = useState("");
-  const [playing, setPlaying] = useState<Video | null>(null);
-  const [detail, setDetail] = useState<Video | null>(null);
+  const { videos } = useVideoLibrary();
+  const browser = useCatalogBrowser();
+  const heroVideo = videos[0];
 
-  const handleProgress = useCallback((id: string, progress: number) => {
-    setVideoList(prev => prev.map(v => v.id === id ? { ...v, progress: Math.round(progress) } : v));
-  }, []);
-
-  const filteredCategories = useMemo(() => {
-    if (!search.trim()) return categories;
-    const q = search.toLowerCase();
-    const filtered = videoList.filter(v => v.title.toLowerCase().includes(q) || v.genre.toLowerCase().includes(q));
-    return filtered.length ? [{ name: "Search Results", items: filtered }] : [];
-  }, [search, videoList]);
-
-  const heroVideo = videoList[0];
+  const rows = useMemo(() => {
+    if (!browser.search.trim()) return buildHomeCategories(videos);
+    const results = searchVideos(videos, browser.search);
+    return results.length ? [{ name: "Search Results", items: results }] : [];
+  }, [videos, browser.search]);
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar onSearch={setSearch} />
-      <HeroBanner video={heroVideo} onPlay={setPlaying} onInfo={setDetail} />
+    <PageShell onSearch={browser.setSearch} withFooter>
+      {heroVideo && (
+        <HeroBanner video={heroVideo} onPlay={browser.openPlayer} onInfo={browser.openDetail} />
+      )}
       <div className="-mt-24 relative z-10">
-        {filteredCategories.map(cat => (
-          <CategoryRow key={cat.name} title={cat.name} videos={cat.items} onPlay={setPlaying} onInfo={setDetail} />
+        {rows.map(row => (
+          <CategoryRow
+            key={row.name}
+            title={row.name}
+            videos={row.items}
+            onPlay={browser.openPlayer}
+            onInfo={browser.openDetail}
+          />
         ))}
       </div>
-      <footer className="py-8 px-12 text-center text-xs text-muted-foreground border-t border-border mt-8">
-        © 2025 Streamix. All rights reserved.
-      </footer>
-
-      {detail && <VideoDetail video={detail} onClose={() => setDetail(null)} onPlay={v => { setDetail(null); setPlaying(v); }} />}
-      {playing && <VideoPlayer video={playing} onClose={() => setPlaying(null)} onProgressUpdate={handleProgress} />}
-    </div>
+      <CatalogOverlays browser={browser} />
+    </PageShell>
   );
 };
 
