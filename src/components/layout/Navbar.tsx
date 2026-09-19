@@ -1,90 +1,94 @@
-import { Bell, Search, User } from "lucide-react";
-import { useState } from "react";
+import { Bell, Play, Search } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ROUTES } from "@/app/routes";
-import { APP_CONFIG } from "@/config/app.config";
+import PillTabs, { type PillTab } from "@/components/common/PillTabs";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { APP_CONFIG, DEMO_USER } from "@/config/app.config";
 import NotificationPanel from "@/features/notifications/components/NotificationPanel";
 import { useNotifications } from "@/features/notifications/hooks/useNotifications";
 import ProfileDropdown from "@/features/profile/components/ProfileDropdown";
+import { getInitials } from "@/lib/utils";
 
 interface NavbarProps {
   onSearch: (query: string) => void;
 }
 
-const NAV_LINKS = [
-  { label: "Home", path: ROUTES.home },
-  { label: "Movies", path: ROUTES.movies },
-  { label: "Series", path: ROUTES.series },
-  { label: "My List", path: ROUTES.myList },
+const NAV_LINKS: PillTab<string>[] = [
+  { label: "Home", value: ROUTES.home },
+  { label: "Explore", value: ROUTES.explore },
+  { label: "Watch Room", value: ROUTES.watch },
+  { label: "My Lounge", value: ROUTES.myList },
 ];
 
 const Navbar = ({ onSearch }: NavbarProps) => {
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [query, setQuery] = useState("");
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
-  const location = useLocation();
+  const { pathname } = useLocation();
   const { unreadCount } = useNotifications();
+  const active = NAV_LINKS.find(({ value }) => pathname === value || pathname.startsWith(`${value}/`))?.value ?? "";
+
+  // Cmd/Ctrl + K focuses search.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        searchRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 bg-gradient-to-b from-stream-overlay to-transparent">
-      <div className="flex items-center gap-8">
-        <h1 className="text-2xl font-bold text-primary tracking-tight cursor-pointer" onClick={() => navigate(ROUTES.home)}>{APP_CONFIG.brand}</h1>
-        <div className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
-          {NAV_LINKS.map(link => (
-            <button
-              key={link.path}
-              onClick={() => navigate(link.path)}
-              className={`transition-colors ${location.pathname === link.path ? "text-foreground font-medium" : "hover:text-foreground"}`}
-            >
-              {link.label}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2">
-          {searchOpen && (
-            <input
-              autoFocus
-              value={query}
-              onChange={e => { setQuery(e.target.value); onSearch(e.target.value); }}
-              onBlur={() => { if (!query) setSearchOpen(false); }}
-              placeholder="Search titles..."
-              className="h-10 bg-secondary border border-border rounded-sm px-3 text-sm text-foreground w-48 focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-          )}
-          <button
-            onClick={() => setSearchOpen(!searchOpen)}
-            className="h-10 w-10 flex items-center justify-center rounded-sm text-foreground hover:text-primary transition-colors"
-            aria-label="Toggle search"
-          >
-            <Search className="w-5 h-5" />
-          </button>
-        </div>
+    <nav className="fixed inset-x-0 top-0 z-50 border-b bg-background/80 backdrop-blur-xl">
+      <div className="mx-auto flex h-[72px] max-w-7xl items-center gap-3 px-6 md:px-12">
+        <button onClick={() => navigate(ROUTES.home)} className="flex shrink-0 items-center gap-3" aria-label="Home">
+          <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-gradient shadow-glow">
+            <Play className="h-4 w-4 fill-background text-background" />
+          </span>
+          <span className="hidden text-lg font-bold tracking-wide text-foreground lg:block">{APP_CONFIG.brand}</span>
+        </button>
+
+        <PillTabs items={NAV_LINKS} value={active} onChange={path => navigate(path)} className="ml-5 hidden md:flex" />
+
+        <label className="ml-auto flex h-10 min-w-0 max-w-64 flex-1 items-center gap-2 rounded-full border bg-card px-4 text-muted-foreground focus-within:border-primary/50">
+          <Search className="h-4 w-4 shrink-0" />
+          <input
+            ref={searchRef}
+            onChange={event => onSearch(event.target.value)}
+            placeholder="Search films, directors..."
+            className="min-w-0 flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+          />
+          <kbd className="hidden rounded-md border bg-secondary px-1.5 font-mono text-[10px] lg:block">⌘K</kbd>
+        </label>
+
         <div className="relative">
-          <button
-            onClick={() => { setNotifOpen(!notifOpen); setProfileOpen(false); }}
-            className="h-10 w-10 flex items-center justify-center rounded-sm text-foreground hover:text-primary transition-colors relative"
+          <Button
+            variant="outline"
+            size="icon"
+            className="relative h-10 w-10"
             aria-label="Open notifications"
+            onClick={() => { setNotifOpen(!notifOpen); setProfileOpen(false); }}
           >
-            <Bell className="w-5 h-5" />
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-primary text-primary-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
-                {unreadCount}
-              </span>
-            )}
-          </button>
+            <Bell />
+            {unreadCount > 0 && <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-primary" />}
+          </Button>
           <NotificationPanel open={notifOpen} onClose={() => setNotifOpen(false)} />
         </div>
+
+        <Button variant="brand" size="sm" className="hidden xl:flex" onClick={() => navigate(ROUTES.watch)}>
+          <span className="h-1.5 w-1.5 rounded-full bg-primary" /> Watch Party
+        </Button>
+
         <div className="relative">
-          <button
-            onClick={() => { setProfileOpen(!profileOpen); setNotifOpen(false); }}
-            className="h-10 w-10 rounded-sm bg-primary flex items-center justify-center hover:bg-primary/80 transition-colors"
-            aria-label="Open profile"
-          >
-            <User className="w-4 h-4 text-primary-foreground" />
+          <button aria-label="Open profile" onClick={() => { setProfileOpen(!profileOpen); setNotifOpen(false); }}>
+            <Avatar className="border-2">
+              <AvatarFallback className="bg-secondary text-xs font-semibold">{getInitials(DEMO_USER.name)}</AvatarFallback>
+            </Avatar>
           </button>
           <ProfileDropdown open={profileOpen} onClose={() => setProfileOpen(false)} />
         </div>

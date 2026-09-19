@@ -1,5 +1,7 @@
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { useEffect } from "react";
+import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
 import { ROUTES } from "@/app/routes";
+import Explore from "@/pages/Explore";
 import HelpCenter from "@/pages/HelpCenter";
 import Index from "@/pages/Index";
 import Movies from "@/pages/Movies";
@@ -9,12 +11,23 @@ import Profile from "@/pages/Profile";
 import Series from "@/pages/Series";
 import Settings from "@/pages/Settings";
 import WatchHistory from "@/pages/WatchHistory";
+import WatchRoom from "@/pages/WatchRoom";
+
+/** Every screen opens at the top, including title-to-title jumps. */
+const ScrollToTop = () => {
+  const { pathname } = useLocation();
+  useEffect(() => window.scrollTo(0, 0), [pathname]);
+  return null;
+};
 
 /** Add a new screen: create the page, add its path to ROUTES, add a <Route> here. */
 const AppRouter = () => (
   <BrowserRouter>
+    <ScrollToTop />
     <Routes>
       <Route path={ROUTES.home} element={<Index />} />
+      <Route path={`${ROUTES.explore}/:id?`} element={<Explore />} />
+      <Route path={`${ROUTES.watch}/:id?`} element={<WatchRoom />} />
       <Route path={ROUTES.movies} element={<Movies />} />
       <Route path={ROUTES.series} element={<Series />} />
       <Route path={ROUTES.myList} element={<MyList />} />

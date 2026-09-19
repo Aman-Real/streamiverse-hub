@@ -4,52 +4,51 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Every colour in the app lives here. Values are HSL triples so Tailwind can add alpha (bg-primary/20). */
 @layer base {
   :root {
-    --background: 220 20% 7%;
-    --foreground: 0 0% 95%;
+    --background: 222 24% 8%;
+    --foreground: 220 20% 96%;
 
-    --card: 220 18% 10%;
-    --card-foreground: 0 0% 95%;
+    --card: 222 20% 11%;
+    --card-foreground: var(--foreground);
+    --popover: var(--card);
+    --popover-foreground: var(--foreground);
 
-    --popover: 220 18% 10%;
-    --popover-foreground: 0 0% 95%;
-
-    --primary: 0 72% 51%;
+    --primary: 348 100% 66%;
     --primary-foreground: 0 0% 100%;
+    --primary-soft: 353 100% 86%;
+    --brand-coral: 6 100% 74%;
 
-    --secondary: 220 14% 16%;
-    --secondary-foreground: 0 0% 85%;
+    --secondary: 223 18% 16%;
+    --secondary-foreground: 222 15% 80%;
+    --muted: 223 17% 14%;
+    --muted-foreground: 222 10% 62%;
+    --accent: 223 18% 18%;
+    --accent-foreground: var(--foreground);
 
-    --muted: 220 14% 14%;
-    --muted-foreground: 220 10% 55%;
-
-    --accent: 220 14% 18%;
-    --accent-foreground: 0 0% 95%;
-
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 14% 18%;
-    --input: 220 14% 18%;
-    --ring: 0 72% 51%;
+    --border: 222 15% 17%;
+    --input: var(--border);
+    --ring: var(--primary);
+    --radius: 0.75rem;
 
-    --radius: 0.5rem;
+    --rating: 46 97% 65%;
+    --success: 159 59% 47%;
+    --tone-lavender: 245 70% 83%;
+    --tone-amber: 26 80% 71%;
+    --tone-rose: 354 69% 80%;
 
-    --stream-red: 0 72% 51%;
-    --stream-red-glow: 0 72% 51%;
-    --stream-surface: 220 18% 12%;
-    --stream-surface-hover: 220 18% 16%;
-    --stream-overlay: 220 20% 4%;
-
-    --sidebar-background: 220 18% 10%;
-    --sidebar-foreground: 0 0% 85%;
-    --sidebar-primary: 0 72% 51%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 14% 16%;
-    --sidebar-accent-foreground: 0 0% 95%;
-    --sidebar-border: 220 14% 18%;
-    --sidebar-ring: 0 72% 51%;
+    --sidebar-background: var(--card);
+    --sidebar-foreground: var(--secondary-foreground);
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: var(--primary-foreground);
+    --sidebar-accent: var(--secondary);
+    --sidebar-accent-foreground: var(--foreground);
+    --sidebar-border: var(--border);
+    --sidebar-ring: var(--primary);
   }
 }
 
@@ -58,8 +57,23 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground font-sans;
+    @apply bg-background text-foreground antialiased;
     font-family: 'Inter', sans-serif;
+  }
+}
+
+@layer components {
+  /* Page frame below the fixed navbar, with the vertical rhythm between sections. */
+  .page-container {
+    @apply mx-auto w-full max-w-7xl space-y-14 px-6 pb-20 pt-28 md:px-12;
+  }
+  .eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-soft;
+  }
+  /* Horizontal card track; set --cols to the number of visible cards. */
+  .media-row {
+    @apply grid grid-flow-col gap-4 overflow-x-auto;
+    grid-auto-columns: calc((100% - (var(--cols) - 1) * 1rem) / var(--cols));
   }
 }
 
@@ -71,4 +85,20 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+  .text-primary-soft { color: hsl(var(--primary-soft)); }
+  .text-rating { color: hsl(var(--rating)); }
+  .bg-success { background-color: hsl(var(--success)); }
+  .bg-brand-gradient { background-image: linear-gradient(135deg, hsl(var(--brand-coral)), hsl(var(--primary))); }
+  .shadow-glow { box-shadow: 0 10px 30px -10px hsl(var(--primary) / 0.7); }
+
+  /* Tinted chip: pair .tone with one .tone-* colour. */
+  .tone {
+    color: hsl(var(--tone));
+    background-color: hsl(var(--tone) / 0.12);
+    border-color: hsl(var(--tone) / 0.3);
+  }
+  .tone-brand { --tone: var(--primary); color: hsl(var(--primary-soft)); }
+  .tone-lavender { --tone: var(--tone-lavender); }
+  .tone-amber { --tone: var(--tone-amber); }
+  .tone-rose { --tone: var(--tone-rose); }
 }

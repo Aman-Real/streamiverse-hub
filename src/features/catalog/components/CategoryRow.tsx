@@ -1,39 +1,45 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useRef } from "react";
-import VideoCard from "@/features/catalog/components/VideoCard";
-import type { Video } from "@/features/catalog/types";
+import { Children, ReactNode, useRef } from "react";
+import SectionHeader, { type SectionHeaderProps } from "@/components/common/SectionHeader";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
-interface CategoryRowProps {
-  title: string;
-  videos: Video[];
-  onPlay: (video: Video) => void;
-  onInfo: (video: Video) => void;
+/** Visible cards per breakpoint; fractions on mobile hint that the row scrolls. */
+const COLUMNS = {
+  3: "[--cols:1.15] sm:[--cols:2] lg:[--cols:3]",
+  4: "[--cols:1.4] sm:[--cols:2] lg:[--cols:4]",
+  5: "[--cols:2.2] sm:[--cols:3] lg:[--cols:5]",
+};
+
+interface CategoryRowProps extends SectionHeaderProps {
+  children: ReactNode;
+  columns?: keyof typeof COLUMNS;
 }
 
-const CategoryRow = ({ title, videos, onPlay, onInfo }: CategoryRowProps) => {
-  const scrollRef = useRef<HTMLDivElement>(null);
+/** A titled, horizontally scrolling row of cards. Without an `action` it shows scroll arrows. */
+const CategoryRow = ({ children, columns = 5, action, ...header }: CategoryRowProps) => {
+  const trackRef = useRef<HTMLDivElement>(null);
 
-  const scroll = (dir: number) => {
-    scrollRef.current?.scrollBy({ left: dir * 500, behavior: "smooth" });
+  if (Children.count(children) === 0) return null;
+
+  const scroll = (direction: number) => {
+    const track = trackRef.current;
+    track?.scrollBy({ left: direction * track.clientWidth, behavior: "smooth" });
   };
 
-  if (videos.length === 0) return null;
-
   return (
-    <section className="relative px-6 md:px-12 mb-10">
-      <h3 className="text-lg font-semibold text-foreground tracking-wide mb-4">{title}</h3>
-      <div className="group/row relative">
-        <button onClick={() => scroll(-1)} className="absolute left-0 top-0 bottom-8 z-10 h-12 w-12 bg-gradient-to-r from-background to-transparent flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity rounded-full">
-          <ChevronLeft className="w-7 h-7 text-foreground" />
-        </button>
-        <div ref={scrollRef} className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
-          {videos.map(video => (
-            <VideoCard key={video.id} video={video} onPlay={onPlay} onInfo={onInfo} />
-          ))}
-        </div>
-        <button onClick={() => scroll(1)} className="absolute right-0 top-0 bottom-8 z-10 h-12 w-12 bg-gradient-to-l from-background to-transparent flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity rounded-full">
-          <ChevronRight className="w-7 h-7 text-foreground" />
-        </button>
+    <section>
+      <SectionHeader
+        {...header}
+        action={action ?? (
+          <>
+            <Button variant="outline" size="icon" aria-label="Scroll left" onClick={() => scroll(-1)}><ChevronLeft /></Button>
+            <Button variant="outline" size="icon" aria-label="Scroll right" onClick={() => scroll(1)}><ChevronRight /></Button>
+          </>
+        )}
+      />
+      <div ref={trackRef} className={cn("media-row scrollbar-hide", COLUMNS[columns])}>
+        {children}
       </div>
     </section>
   );

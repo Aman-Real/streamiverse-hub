@@ -13,8 +13,9 @@ export const APP_CONFIG = {
  * When you add auth, delete this and read the session user instead.
  */
 export const DEMO_USER = {
-  name: "Guest User",
-  email: "guest@streamix.app",
+  name: "Elena Vance",
+  email: "elena@streamix.app",
   memberSince: "Jan 2024",
-  plan: "Premium Plan",
+  plan: "Premium 4K",
+  tier: "Lounge Master",
 } as const;

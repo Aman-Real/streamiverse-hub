@@ -1,50 +1,24 @@
 import { useCallback, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { ROUTES, titleRoute } from "@/app/routes";
 import type { Video } from "@/features/catalog/types";
 
 export interface CatalogBrowser {
   search: string;
   setSearch: (query: string) => void;
-  detail: Video | null;
-  playing: Video | null;
+  /** Open the title's Explore page. */
   openDetail: (video: Video) => void;
-  closeDetail: () => void;
+  /** Start playback in the Watch Room. */
   openPlayer: (video: Video) => void;
-  closePlayer: () => void;
-  /** Close the detail modal and start playback in one step. */
-  playFromDetail: (video: Video) => void;
 }
 
-/**
- * The search / detail-modal / player state every browse screen needs.
- * Pair it with <CatalogOverlays browser={browser} /> to render the modals.
- */
+/** The search state and title navigation every browse screen needs. */
 export const useCatalogBrowser = (): CatalogBrowser => {
   const [search, setSearch] = useState("");
-  const [detail, setDetail] = useState<Video | null>(null);
-  const [playing, setPlaying] = useState<Video | null>(null);
+  const navigate = useNavigate();
 
-  const openDetail = useCallback((video: Video) => setDetail(video), []);
-  const closeDetail = useCallback(() => setDetail(null), []);
-  const openPlayer = useCallback((video: Video) => setPlaying(video), []);
-  const closePlayer = useCallback(() => setPlaying(null), []);
+  const openDetail = useCallback((video: Video) => navigate(titleRoute(ROUTES.explore, video.id)), [navigate]);
+  const openPlayer = useCallback((video: Video) => navigate(titleRoute(ROUTES.watch, video.id)), [navigate]);
 
-  const playFromDetail = useCallback((video: Video) => {
-    setDetail(null);
-    setPlaying(video);
-  }, []);
-
-  return useMemo(
-    () => ({
-      search,
-      setSearch,
-      detail,
-      playing,
-      openDetail,
-      closeDetail,
-      openPlayer,
-      closePlayer,
-      playFromDetail,
-    }),
-    [search, detail, playing, openDetail, closeDetail, openPlayer, closePlayer, playFromDetail],
-  );
+  return useMemo(() => ({ search, setSearch, openDetail, openPlayer }), [search, openDetail, openPlayer]);
 };

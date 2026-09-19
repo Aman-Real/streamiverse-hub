@@ -1,42 +1,42 @@
-import { Info, Play } from "lucide-react";
-import heroImage from "@/assets/images/hero-banner.jpg";
+import { ReactNode } from "react";
+import Rating from "@/components/common/Rating";
+import { Badge } from "@/components/ui/badge";
 import type { Video } from "@/features/catalog/types";
 
 interface HeroBannerProps {
   video: Video;
-  onPlay: (video: Video) => void;
-  onInfo: (video: Video) => void;
+  /** Highlighted first badge, e.g. "Featured". */
+  label: string;
+  tags: string[];
+  /** Kicker above the title. */
+  eyebrow?: string;
+  actions: ReactNode;
 }
 
-const HeroBanner = ({ video, onPlay, onInfo }: HeroBannerProps) => {
-  return (
-    <div className="relative h-[85vh] w-full overflow-hidden">
-      <img src={heroImage} alt={video.title} className="absolute inset-0 w-full h-full object-cover" width={1920} height={1080} />
-      <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
-      <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-transparent to-transparent" />
-
-      <div className="absolute bottom-[15%] left-0 px-6 md:px-12 max-w-2xl animate-fade-in">
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-xs font-semibold bg-primary px-2 py-0.5 rounded-sm text-primary-foreground">{video.rating}</span>
-          <span className="text-xs text-muted-foreground">{video.year}</span>
-          <span className="text-xs text-muted-foreground">•</span>
-          <span className="text-xs text-muted-foreground">{video.genre}</span>
-          <span className="text-xs text-muted-foreground">•</span>
-          <span className="text-xs text-muted-foreground">{video.duration}</span>
-        </div>
-        <h2 className="text-5xl md:text-6xl font-bold text-foreground mb-4 leading-tight">{video.title}</h2>
-        <p className="text-sm text-secondary-foreground leading-relaxed mb-6 line-clamp-3">{video.description}</p>
-        <div className="flex items-center gap-3">
-          <button onClick={() => onPlay(video)} className="flex items-center gap-2 bg-foreground text-background px-6 py-2.5 rounded-sm font-semibold text-sm hover:bg-foreground/90 transition-colors">
-            <Play className="w-5 h-5 fill-current" /> Play
-          </button>
-          <button onClick={() => onInfo(video)} className="flex items-center gap-2 bg-secondary/80 text-foreground px-6 py-2.5 rounded-sm font-semibold text-sm hover:bg-secondary transition-colors">
-            <Info className="w-5 h-5" /> More Info
-          </button>
-        </div>
+const HeroBanner = ({ video, label, tags, eyebrow, actions }: HeroBannerProps) => (
+  <section className="relative isolate overflow-hidden rounded-3xl border bg-card">
+    <img src={video.backdrop ?? video.thumbnail} alt="" className="absolute inset-0 -z-10 h-full w-full object-cover opacity-60" />
+    <div className="absolute inset-0 -z-10 bg-gradient-to-r from-background via-background/80 to-background/10" />
+    <div className="flex min-h-[26rem] max-w-2xl flex-col justify-center gap-5 p-8 md:p-12">
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge variant="brand">{label}</Badge>
+        {tags.map(tag => <Badge key={tag} variant="glass">{tag}</Badge>)}
+        <Badge variant="glass"><Rating value={video.score} /></Badge>
       </div>
+      {eyebrow && (
+        <p className="eyebrow flex items-center gap-2">
+          <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+          {eyebrow}
+        </p>
+      )}
+      <h1 className="text-4xl font-bold leading-[1.05] tracking-tight text-foreground md:text-6xl">
+        {video.title}
+        {video.subtitle && <span className="block text-primary-soft">{video.subtitle}</span>}
+      </h1>
+      <p className="max-w-lg text-sm leading-relaxed text-secondary-foreground md:text-base">{video.description}</p>
+      <div className="flex flex-wrap gap-3">{actions}</div>
     </div>
-  );
-};
+  </section>
+);
 
 export default HeroBanner;

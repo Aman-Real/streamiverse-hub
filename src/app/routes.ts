@@ -4,6 +4,8 @@
  */
 export const ROUTES = {
   home: "/",
+  explore: "/explore",
+  watch: "/watch",
   movies: "/movies",
   series: "/series",
   myList: "/my-list",
@@ -14,3 +16,6 @@ export const ROUTES = {
 } as const;
 
 export type AppRoute = (typeof ROUTES)[keyof typeof ROUTES];
+
+/** Deep link to one title, e.g. titleRoute(ROUTES.watch, "3") -> "/watch/3". */
+export const titleRoute = (route: AppRoute, id: string) => `${route}/${id}`;
