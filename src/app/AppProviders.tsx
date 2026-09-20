@@ -1,5 +1,6 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ReactNode } from "react";
+import TmdbHealthCheck from "@/app/TmdbHealthCheck";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { VideoLibraryProvider } from "@/features/catalog/context/VideoLibraryProvider";
@@ -19,6 +20,8 @@ const AppProviders = ({ children }: { children: ReactNode }) => (
           <NotificationsProvider>
             {children}
             <Toaster />
+            {/* DEV-ONLY TMDB token check. Keep it after <Toaster /> so a failure toast isn't dropped. */}
+            {import.meta.env.DEV && <TmdbHealthCheck />}
           </NotificationsProvider>
         </MyListProvider>
       </VideoLibraryProvider>
