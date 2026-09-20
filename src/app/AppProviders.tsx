@@ -3,6 +3,7 @@ import { ReactNode } from "react";
 import TmdbHealthCheck from "@/app/TmdbHealthCheck";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { AuthProvider } from "@/features/auth/context/AuthProvider";
 import { VideoLibraryProvider } from "@/features/catalog/context/VideoLibraryProvider";
 import { MyListProvider } from "@/features/my-list/context/MyListProvider";
 import { NotificationsProvider } from "@/features/notifications/context/NotificationsProvider";
@@ -14,18 +15,20 @@ import { queryClient } from "@/lib/queryClient";
  */
 const AppProviders = ({ children }: { children: ReactNode }) => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <VideoLibraryProvider>
-        <MyListProvider>
-          <NotificationsProvider>
-            {children}
-            <Toaster />
-            {/* DEV-ONLY TMDB token check. Keep it after <Toaster /> so a failure toast isn't dropped. */}
-            {import.meta.env.DEV && <TmdbHealthCheck />}
-          </NotificationsProvider>
-        </MyListProvider>
-      </VideoLibraryProvider>
-    </TooltipProvider>
+    <AuthProvider>
+      <TooltipProvider>
+        <VideoLibraryProvider>
+          <MyListProvider>
+            <NotificationsProvider>
+              {children}
+              <Toaster />
+              {/* DEV-ONLY TMDB token check. Keep it after <Toaster /> so a failure toast isn't dropped. */}
+              {import.meta.env.DEV && <TmdbHealthCheck />}
+            </NotificationsProvider>
+          </MyListProvider>
+        </VideoLibraryProvider>
+      </TooltipProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 

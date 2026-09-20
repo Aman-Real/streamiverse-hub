@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
 import { ROUTES } from "@/app/routes";
+import Auth from "@/pages/Auth";
 import Explore from "@/pages/Explore";
 import HelpCenter from "@/pages/HelpCenter";
 import Index from "@/pages/Index";
@@ -35,6 +36,7 @@ const AppRouter = () => (
       <Route path={ROUTES.watchHistory} element={<WatchHistory />} />
       <Route path={ROUTES.settings} element={<Settings />} />
       <Route path={ROUTES.help} element={<HelpCenter />} />
+      <Route path={ROUTES.auth} element={<Auth />} />
       {/* Keep the catch-all last. */}
       <Route path="*" element={<NotFound />} />
     </Routes>

@@ -13,6 +13,7 @@ export const ROUTES = {
   watchHistory: "/watch-history",
   settings: "/settings",
   help: "/help",
+  auth: "/auth",
 } as const;
 
 export type AppRoute = (typeof ROUTES)[keyof typeof ROUTES];

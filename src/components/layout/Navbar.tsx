@@ -1,11 +1,15 @@
-import { Bell, Play, Search } from "lucide-react";
+import { Bell, Search } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ROUTES } from "@/app/routes";
+import BrandMark from "@/components/common/BrandMark";
 import PillTabs, { type PillTab } from "@/components/common/PillTabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { APP_CONFIG, DEMO_USER } from "@/config/app.config";
+import AuthButton from "@/features/auth/components/AuthButton";
+import AuthGate from "@/features/auth/components/AuthGate";
+import { useAuth } from "@/features/auth/hooks/useAuth";
 import NotificationPanel from "@/features/notifications/components/NotificationPanel";
 import { useNotifications } from "@/features/notifications/hooks/useNotifications";
 import ProfileDropdown from "@/features/profile/components/ProfileDropdown";
@@ -29,6 +33,7 @@ const Navbar = ({ onSearch }: NavbarProps) => {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { unreadCount } = useNotifications();
+  const { user } = useAuth();
   const active = NAV_LINKS.find(({ value }) => pathname === value || pathname.startsWith(`${value}/`))?.value ?? "";
 
   // Cmd/Ctrl + K focuses search.
@@ -47,9 +52,7 @@ const Navbar = ({ onSearch }: NavbarProps) => {
     <nav className="fixed inset-x-0 top-0 z-50 border-b bg-background/80 backdrop-blur-xl">
       <div className="mx-auto flex h-[72px] max-w-7xl items-center gap-3 px-6 md:px-12">
         <button onClick={() => navigate(ROUTES.home)} className="flex shrink-0 items-center gap-3" aria-label="Home">
-          <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-gradient shadow-glow">
-            <Play className="h-4 w-4 fill-background text-background" />
-          </span>
+          <BrandMark />
           <span className="hidden text-lg font-bold tracking-wide text-foreground lg:block">{APP_CONFIG.brand}</span>
         </button>
 
@@ -80,14 +83,18 @@ const Navbar = ({ onSearch }: NavbarProps) => {
           <NotificationPanel open={notifOpen} onClose={() => setNotifOpen(false)} />
         </div>
 
-        <Button variant="brand" size="sm" className="hidden xl:flex" onClick={() => navigate(ROUTES.watch)}>
-          <span className="h-1.5 w-1.5 rounded-full bg-primary" /> Watch Party
-        </Button>
+        {/* Signed-out visitors only; members get nothing here. Icon-only on phones, where space is tight. */}
+        <AuthGate when="signedOut">
+          <AuthButton variant="brand" size="sm" className="px-2.5 sm:px-4">
+            <span className="sr-only sm:not-sr-only">Sign up / Sign in</span>
+          </AuthButton>
+        </AuthGate>
 
         <div className="relative">
           <button aria-label="Open profile" onClick={() => { setProfileOpen(!profileOpen); setNotifOpen(false); }}>
             <Avatar className="border-2">
-              <AvatarFallback className="bg-secondary text-xs font-semibold">{getInitials(DEMO_USER.name)}</AvatarFallback>
+              {/* DEMO_USER is the placeholder shown until the profile pages read the signed-in account. */}
+              <AvatarFallback className="bg-secondary text-xs font-semibold">{getInitials(user?.name ?? DEMO_USER.name)}</AvatarFallback>
             </Avatar>
           </button>
           <ProfileDropdown open={profileOpen} onClose={() => setProfileOpen(false)} />
