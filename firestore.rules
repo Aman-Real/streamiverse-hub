@@ -1,0 +1,49 @@
+rules_version = '2';
+
+// Streamix security rules. Everything is closed by default; each block below
+// opens the narrowest hole it can. The Admin SDK (payment webhook) bypasses all of this.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    // The only fields the browser may send. Anything else is rejected outright.
+    function hasAllowedFieldsOnly() {
+      return request.resource.data.keys().hasOnly(["displayName", "email", "plan", "createdAt"]);
+    }
+
+    match /users/{uid} {
+      allow get: if isOwner(uid);
+      // No listing accounts, ever.
+      allow list: if false;
+
+      // A new account always starts on the free plan.
+      allow create: if isOwner(uid)
+        && hasAllowedFieldsOnly()
+        && request.resource.data.plan == "free"
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.displayName is string
+        && request.resource.data.email is string;
+
+      // The profile stays editable; everything else is server-owned. Listing the fields that
+      // may CHANGE (rather than the fields that may exist) keeps this correct once the payment
+      // webhook starts adding its own fields to the document.
+      allow update: if isOwner(uid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["displayName", "email"]);
+
+      allow delete: if false;
+
+      // Continue-watching: one document per title, private to the account.
+      match /progress/{titleId} {
+        allow read, write: if isOwner(uid);
+      }
+    }
+
+    // Anything not named above stays locked.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

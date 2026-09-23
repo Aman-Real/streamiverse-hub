@@ -17,7 +17,11 @@ import WatchRoom from "@/pages/WatchRoom";
 /** Every screen opens at the top, including title-to-title jumps. */
 const ScrollToTop = () => {
   const { pathname } = useLocation();
-  useEffect(() => window.scrollTo(0, 0), [pathname]);
+  useEffect(() => {
+    // Braces matter: an arrow that returns a value hands React that value as the effect's
+    // cleanup, and React calls it on the next navigation.
+    window.scrollTo(0, 0);
+  }, [pathname]);
   return null;
 };
 
