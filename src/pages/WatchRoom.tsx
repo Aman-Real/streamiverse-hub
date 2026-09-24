@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { parseEpisodeRef } from "@/app/routes";
 import PageShell from "@/components/layout/PageShell";
@@ -5,6 +6,7 @@ import { NO_VIDEOS, useTitle, useTrending } from "@/features/catalog/hooks/useCa
 import VideoPlayer from "@/features/player/components/VideoPlayer";
 import { useWatchProgress } from "@/features/watch-progress/hooks/useWatchProgress";
 import { resolveEpisode, resumePosition } from "@/features/watch-progress/utils/progress";
+import type { PlaybackPosition, ProgressReportOptions } from "@/features/player/types";
 import { isTmdbNotFound } from "@/lib/tmdb";
 import NotFound from "@/pages/NotFound";
 
@@ -22,16 +24,24 @@ const WatchRoom = () => {
   const titleId = id ?? (loading ? undefined : continueWatching[0]?.id ?? trending[0]?.id);
   const { data, error } = useTitle(titleId);
 
-  if (isTmdbNotFound(error)) return <NotFound />;
-
   const video = data?.video;
   const entry = titleId ? getProgress(titleId) : undefined;
   const episode = video ? resolveEpisode(video, parseEpisodeRef(searchParams), entry) : undefined;
 
+  const handleProgressUpdate = useCallback(
+    (position: PlaybackPosition, options?: ProgressReportOptions) => {
+      if (!video) return;
+      saveProgress(video, position, { ...options, episode });
+    },
+    [video, episode, saveProgress],
+  );
+
+  if (isTmdbNotFound(error)) return <NotFound />;
+
   return (
     <PageShell withFooter>
       <div className="page-container">
-        {/* The resume point comes from progress, so the player waits for it. */}
+        {/* The resume point is captured when VideoPlayer mounts. Later progress updates must not reload the iframe. */}
         {video && !loading && (
           <VideoPlayer
             key={episode?.id ?? video.id}
@@ -39,7 +49,7 @@ const WatchRoom = () => {
             episode={episode}
             startAt={resumePosition(entry, episode)}
             onClose={() => navigate(-1)}
-            onProgressUpdate={(position, options) => saveProgress(video, position, { ...options, episode })}
+            onProgressUpdate={handleProgressUpdate}
           />
         )}
       </div>

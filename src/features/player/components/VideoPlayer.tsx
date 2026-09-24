@@ -1,48 +1,133 @@
 import { ArrowLeft, Maximize } from "lucide-react";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { Episode, Video } from "@/features/catalog/types";
 import MyListButton from "@/features/my-list/components/MyListButton";
 import type { PlaybackPosition, ProgressReportOptions } from "@/features/player/types";
-import { getNexStreamEmbedUrl } from "@/lib/nexstream";
+import { getCineSrcEmbedUrl } from "@/lib/cinesrc";
 import { cn } from "@/lib/utils";
 
 interface VideoPlayerProps {
   video: Video;
-  /** Series: the episode playing. */
   episode?: Episode;
-  /** Seconds to resume from the saved Streamix watch-progress entry. */
   startAt?: number;
   onClose: () => void;
-  /**
-   * Kept in the player contract so the rest of the watch-progress architecture remains
-   * compatible. NexStream runs in a cross-origin iframe, so its internal playback time
-   * is not exposed to the parent page by the documented API.
-   */
   onProgressUpdate: (position: PlaybackPosition, options?: ProgressReportOptions) => void;
 }
 
-const VideoPlayer = ({
+type CineSrcMessage = {
+  type?: string;
+  currentTime?: number;
+  duration?: number;
+  position?: number;
+  [key: string]: unknown;
+};
+
+const CineSrcPlayer = ({
   video,
   episode,
   startAt = 0,
   onClose,
+  onProgressUpdate,
 }: VideoPlayerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const streamUrl = useMemo(() => {
+  // The resume position is only used when the player is first mounted.
+  // Progress updates can cause the parent to re-render; they must not change
+  // the iframe URL and restart/reload the CineSrc player.
+  const initialStartAtRef = useRef(startAt);
+
+  const lastPositionRef = useRef<PlaybackPosition>({
+    positionSeconds: startAt,
+    durationSeconds: 0,
+  });
+
+  const cinesrcUrl = useMemo(() => {
     try {
-      return getNexStreamEmbedUrl(video, episode, startAt);
+      return getCineSrcEmbedUrl(video, episode, initialStartAtRef.current);
     } catch {
       return null;
     }
-  }, [video, episode, startAt]);
+  }, [video, episode]);
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent<CineSrcMessage>) => {
+      if (event.origin !== "https://cinesrc.st") return;
+
+      const message = event.data;
+      if (!message || typeof message.type !== "string") return;
+
+      // Keep this logging while diagnosing source/provider playback failures.
+      // It can be removed after the player is confirmed stable.
+      if (
+        message.type === "cinesrc:error" ||
+        message.type === "cinesrc:sourceused" ||
+        message.type === "cinesrc:ready" ||
+        message.type === "cinesrc:play" ||
+        message.type === "cinesrc:pause" ||
+        message.type === "cinesrc:ended"
+      ) {
+        console.info("[CineSrc]", message.type, message);
+      }
+
+      if (message.type === "cinesrc:error") {
+        console.error("[CineSrc] Playback error:", message);
+        return;
+      }
+
+      const currentTime = Number(message.currentTime ?? message.position);
+      const duration = Number(message.duration);
+
+      if (message.type === "cinesrc:timeupdate" && Number.isFinite(currentTime)) {
+        const next: PlaybackPosition = {
+          positionSeconds: Math.max(0, currentTime),
+          durationSeconds:
+            Number.isFinite(duration) && duration > 0
+              ? duration
+              : lastPositionRef.current.durationSeconds,
+        };
+
+        lastPositionRef.current = next;
+        onProgressUpdate(next);
+      }
+
+      if (
+        (message.type === "cinesrc:pause" || message.type === "cinesrc:ended") &&
+        Number.isFinite(currentTime)
+      ) {
+        const next: PlaybackPosition = {
+          positionSeconds: Math.max(0, currentTime),
+          durationSeconds:
+            Number.isFinite(duration) && duration > 0
+              ? duration
+              : lastPositionRef.current.durationSeconds,
+        };
+
+        lastPositionRef.current = next;
+        onProgressUpdate(next, { immediate: true });
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [onProgressUpdate]);
+
+  useEffect(() => {
+    const saveOnExit = () => {
+      const position = lastPositionRef.current;
+      if (position.positionSeconds > 0) {
+        onProgressUpdate(position, { immediate: true });
+      }
+    };
+
+    window.addEventListener("pagehide", saveOnExit);
+    return () => window.removeEventListener("pagehide", saveOnExit);
+  }, [onProgressUpdate]);
 
   const toggleFullscreen = () => {
     void containerRef.current?.requestFullscreen?.();
   };
-
 
   return (
     <div
@@ -76,10 +161,10 @@ const VideoPlayer = ({
       </div>
 
       <div className="relative aspect-video min-h-[20rem] bg-black">
-        {streamUrl ? (
+        {cinesrcUrl ? (
           <iframe
-            title={`NexStream player for ${video.title}`}
-            src={streamUrl}
+            title={`CineSrc player for ${video.title}`}
+            src={cinesrcUrl}
             className={cn("absolute inset-0 h-full w-full border-0")}
             allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
             allowFullScreen
@@ -90,15 +175,15 @@ const VideoPlayer = ({
             <div className="max-w-md space-y-2">
               <p className="text-lg font-semibold text-white">Playback is unavailable</p>
               <p className="text-sm text-white/70">
-                Check VITE_NEXTSTREAM_API in .env.local, restart the Vite server, and
-                make sure your NexStream key is authorized for this domain.
+                This title does not contain a valid TMDB identifier or a TV episode was not selected.
               </p>
             </div>
           </div>
         )}
       </div>
 
-      <div className="flex items-center justify-end gap-2 border-t border-white/10 bg-background/95 px-4 py-3">
+      <div className="flex items-center justify-between gap-2 border-t border-white/10 bg-background/95 px-4 py-3">
+        <div className="text-xs text-muted-foreground">Player: CineSrc · Preferred quality: 1080p</div>
         <Button variant="ghost" size="icon" aria-label="Fullscreen" onClick={toggleFullscreen}>
           <Maximize />
         </Button>
@@ -107,4 +192,4 @@ const VideoPlayer = ({
   );
 };
 
-export default VideoPlayer;
+export default CineSrcPlayer;

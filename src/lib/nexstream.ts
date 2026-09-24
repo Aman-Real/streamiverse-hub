@@ -26,10 +26,6 @@ const buildUrl = (path: string, progressSeconds = 0) => {
   return url.toString();
 };
 
-/**
- * Builds the NexStream embed URL from the same TMDB IDs already used by Streamix.
- * NexStream accepts TMDB IDs directly, so no additional metadata lookup is needed.
- */
 export const getNexStreamEmbedUrl = (
   video: Video,
   episode?: Episode,
