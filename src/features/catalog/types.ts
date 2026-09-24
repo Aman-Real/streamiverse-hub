@@ -21,11 +21,12 @@ export interface CastMember {
   name: string;
   /** Character played, or crew role. */
   role: string;
-  /** e.g. "4 Titles" or "Creator". */
+  /** e.g. "Cast" or "Crew". */
   credits: string;
 }
 
 export interface Video {
+  /** Unique across movies and series, e.g. "movie-603" or "tv-1399" (see utils/titleId). */
   id: string;
   title: string;
   /** Second headline line, e.g. "Resurrection". */
@@ -33,11 +34,11 @@ export interface Video {
   /** Story arc shown above the title on Explore. */
   tagline?: string;
   description: string;
-  /** Bundled asset import or remote poster URL. */
+  /** Poster image URL. */
   thumbnail: string;
   /** Wide hero image; falls back to the thumbnail. */
   backdrop?: string;
-  /** Minutes (per episode for series). */
+  /** Minutes (per episode for series). 0 when unknown: list results don't include it. */
   runtime: number;
   genre: string;
   year: number;
@@ -53,6 +54,8 @@ export interface Video {
   progress: number;
   videoUrl: string;
   type: VideoType;
+  /** Series only: number of seasons, known from title details even before episodes load. */
+  seasonCount?: number;
   episodes?: Episode[];
   cast?: CastMember[];
 }
@@ -62,3 +65,18 @@ export interface VideoCategory {
   name: string;
   items: Video[];
 }
+
+/** Everything the Explore screen shows for one title. */
+export interface TitleDetails {
+  video: Video;
+  recommendations: Video[];
+}
+
+/**
+ * The fields a card needs, copied off a Video and stored with My List and watch-progress entries,
+ * so saved titles render without asking TMDB again.
+ */
+export type TitleSnapshot = Pick<
+  Video,
+  "id" | "type" | "title" | "thumbnail" | "backdrop" | "genre" | "year" | "runtime" | "rating" | "score" | "match" | "seasonCount"
+>;

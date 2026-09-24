@@ -46,12 +46,31 @@ export async function tmdbFetch<T>(path: string, { params, signal }: TmdbFetchOp
   return response.json() as Promise<T>;
 }
 
-interface TmdbValidateKeyResponse {
-  success: boolean;
-  status_code: number;
-  status_message: string;
-}
+/** True when TMDB (or a malformed title id) says the title doesn't exist. */
+export const isTmdbNotFound = (error: unknown) => error instanceof TmdbError && error.status === 404;
 
-/** TMDB's "Validate Key" endpoint: resolves when the token is accepted, throws TmdbError when not. */
-export const validateTmdbToken = (signal?: AbortSignal) =>
-  tmdbFetch<TmdbValidateKeyResponse>("/authentication", { signal });
+/** A failed TMDB request, explained for developers: what went wrong and the most likely fix. */
+export const describeTmdbError = (error: unknown): { title: string; description: string } => {
+  const token = TMDB_CONFIG.readToken;
+  if (!token) {
+    return {
+      title: "TMDB token not found",
+      description:
+        "VITE_TMDB_READ_TOKEN is empty. Keep .env.local in the project root (next to package.json), then restart the dev server.",
+    };
+  }
+  if (error instanceof TmdbError && error.status === 401) {
+    const hint = token.startsWith("eyJ")
+      ? ""
+      : " Use the API Read Access Token (the long value starting with eyJ), not the short v3 API Key, and without a Bearer prefix.";
+    return { title: "TMDB rejected the token", description: `${error.message}${hint}` };
+  }
+  if (error instanceof TmdbError) {
+    return { title: `TMDB responded with HTTP ${error.status}`, description: `${error.message} Try again in a minute.` };
+  }
+  return {
+    title: "Couldn't reach TMDB",
+    description:
+      "api.themoviedb.org didn't respond. Check your connection, or try another network or DNS in case your ISP blocks it.",
+  };
+};

@@ -14,6 +14,14 @@ service cloud.firestore {
       return request.resource.data.keys().hasOnly(["displayName", "email", "plan", "createdAt"]);
     }
 
+    // Card data copied from TMDB and stored with a saved title. Its id must match the
+    // document id, so one title can't be filed under another.
+    function isTitleSnapshot(title, titleId) {
+      return title is map
+        && title.id == titleId
+        && title.title is string;
+    }
+
     match /users/{uid} {
       allow get: if isOwner(uid);
       // No listing accounts, ever.
@@ -36,8 +44,30 @@ service cloud.firestore {
       allow delete: if false;
 
       // Continue-watching: one document per title, private to the account.
+      // updatedAt must be the server's clock, so "most recently watched" can't be faked.
       match /progress/{titleId} {
-        allow read, write: if isOwner(uid);
+        allow read, delete: if isOwner(uid);
+        allow create, update: if isOwner(uid)
+          && request.resource.data.keys().hasOnly([
+            "title", "progress", "positionSeconds", "durationSeconds",
+            "season", "episode", "episodeTitle", "updatedAt"
+          ])
+          && isTitleSnapshot(request.resource.data.title, titleId)
+          && request.resource.data.progress is number
+          && request.resource.data.progress >= 0
+          && request.resource.data.progress <= 100
+          && request.resource.data.positionSeconds is number
+          && request.resource.data.durationSeconds is number
+          && request.resource.data.updatedAt == request.time;
+      }
+
+      // My List: one document per saved title, private to the account.
+      match /myList/{titleId} {
+        allow read, delete: if isOwner(uid);
+        allow create, update: if isOwner(uid)
+          && request.resource.data.keys().hasOnly(["title", "addedAt"])
+          && isTitleSnapshot(request.resource.data.title, titleId)
+          && request.resource.data.addedAt == request.time;
       }
     }
 

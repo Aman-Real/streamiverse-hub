@@ -8,14 +8,8 @@ export const APP_CONFIG = {
   copyrightYear: 2025,
 } as const;
 
-/**
- * Placeholder account shown until real auth exists.
- * When you add auth, delete this and read the session user instead.
- */
-export const DEMO_USER = {
-  name: "Elena Vance",
-  email: "elena@streamix.app",
-  memberSince: "Jan 2024",
-  plan: "Premium 4K",
-  tier: "Lounge Master",
+/** Shown wherever an account's details go when nobody is signed in. */
+export const GUEST_ACCOUNT = {
+  name: "Guest",
+  email: "Not signed in",
 } as const;

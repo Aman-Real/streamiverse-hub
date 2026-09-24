@@ -1,4 +1,3 @@
-import { TRENDING_IDS } from "@/features/catalog/data/videos.mock";
 import type { Episode, Video, VideoCategory, VideoType } from "@/features/catalog/types";
 
 /** Pure functions over a video list. No React, no state - trivially unit-testable. */
@@ -16,9 +15,6 @@ export const searchVideos = (videos: Video[], query: string): Video[] => {
 export const filterByType = (videos: Video[], type: VideoType | "all"): Video[] =>
   type === "all" ? videos : videos.filter(video => video.type === type);
 
-export const getContinueWatching = (videos: Video[]): Video[] =>
-  videos.filter(video => video.progress > 0);
-
 export const groupByGenre = (videos: Video[]): VideoCategory[] => {
   const genres = [...new Set(videos.map(video => video.genre))];
   return genres.map(genre => ({
@@ -27,27 +23,11 @@ export const groupByGenre = (videos: Video[]): VideoCategory[] => {
   }));
 };
 
-/** Videos in `ids` order; unknown ids are skipped. */
-export const pickByIds = (videos: Video[], ids: string[]): Video[] => {
-  const byId = new Map(videos.map(video => [video.id, video]));
-  return ids.map(id => byId.get(id)).filter((video): video is Video => Boolean(video));
-};
-
 /** "recent" expects `videos` in the order they were added. */
 export const sortVideos = (videos: Video[], key: SortKey): Video[] =>
   key === "recent"
     ? [...videos].reverse()
     : [...videos].sort((a, b) => (key === "rating" ? b.score - a.score : a.title.localeCompare(b.title)));
-
-/** Home page rows. `trendingIds` is injectable so tests don't depend on the mock data. */
-export const buildHomeRows = (videos: Video[], trendingIds: string[] = TRENDING_IDS) => ({
-  continueWatching: getContinueWatching(videos),
-  trending: pickByIds(videos, trendingIds),
-  topRatedSeries: sortVideos(filterByType(videos, "series"), "rating"),
-});
-
-export const getRecommendations = (videos: Video[], video: Video): Video[] =>
-  videos.filter(item => item.id !== video.id).sort((a, b) => b.match - a.match);
 
 /** 134 -> "2h 14m". */
 export const formatRuntime = (minutes: number): string => {
@@ -55,10 +35,11 @@ export const formatRuntime = (minutes: number): string => {
   return hours ? `${hours}h ${minutes % 60}m` : `${minutes}m`;
 };
 
-/** Runtime for movies, season count for series. */
+/** Runtime for movies, season count for series. List results carry neither, so those show the type instead. */
 export const formatLength = (video: Video): string => {
-  if (video.type === "movie") return formatRuntime(video.runtime);
-  const seasons = new Set(video.episodes?.map(episode => episode.season)).size || 1;
+  if (video.type === "movie") return video.runtime > 0 ? formatRuntime(video.runtime) : "Movie";
+  const seasons = video.seasonCount ?? new Set(video.episodes?.map(episode => episode.season)).size;
+  if (!seasons) return "Series";
   return `${seasons} Season${seasons > 1 ? "s" : ""}`;
 };
 
