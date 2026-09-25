@@ -1,6 +1,9 @@
 /**
  * Every localStorage key the app uses.
  * Keeping them here prevents typo-mismatches between read and write sites.
- * Empty for now: My List moved to Firestore, so it follows the account across devices.
+ * My List and watch progress live in Firestore; only per-device preferences are stored locally.
  */
-export const STORAGE_KEYS = {} as const;
+export const STORAGE_KEYS = {
+  /** Playback preferences from the Settings screen (autoplay next episode, HD streaming). */
+  playbackSettings: "streamix:playback-settings",
+} as const;

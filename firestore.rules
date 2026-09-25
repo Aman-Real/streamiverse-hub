@@ -9,9 +9,31 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == uid;
     }
 
-    // The only fields the browser may send. Anything else is rejected outright.
+    // The only fields a new account's document may have. Anything else is rejected outright.
     function hasAllowedFieldsOnly() {
       return request.resource.data.keys().hasOnly(["displayName", "email", "plan", "createdAt"]);
+    }
+
+    // Which fields this write changes, added or removed included.
+    function changedKeys() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+
+    // A display name must contain real text. The app caps edits at 40 characters;
+    // 100 here is a backstop that still accepts long names typed at sign-up.
+    function isValidDisplayName(name) {
+      return name is string
+        && name.trim().size() > 0
+        && name.size() <= 100;
+    }
+
+    // Profile photo, stored inline as a small image data URL (the app sends a 256px JPEG,
+    // usually 10-60 KB). Removing the photo deletes the field, which is always allowed.
+    function isValidPhoto(data) {
+      return !("photoUrl" in data)
+        || (data.photoUrl is string
+          && data.photoUrl.size() <= 300000
+          && data.photoUrl.matches("^data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$"));
     }
 
     // Card data copied from TMDB and stored with a saved title. Its id must match the
@@ -35,11 +57,15 @@ service cloud.firestore {
         && request.resource.data.displayName is string
         && request.resource.data.email is string;
 
-      // The profile stays editable; everything else is server-owned. Listing the fields that
-      // may CHANGE (rather than the fields that may exist) keeps this correct once the payment
-      // webhook starts adding its own fields to the document.
+      // The profile (name, email, photo) stays editable; everything else is server-owned.
+      // Listing the fields that may CHANGE (rather than the fields that may exist) keeps this
+      // correct once the payment webhook starts adding its own fields to the document.
+      // Each field is validated only when it changes, so older documents can still be edited.
       allow update: if isOwner(uid)
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["displayName", "email"]);
+        && changedKeys().hasOnly(["displayName", "email", "photoUrl"])
+        && (!changedKeys().hasAny(["displayName"]) || isValidDisplayName(request.resource.data.displayName))
+        && (!changedKeys().hasAny(["email"]) || request.resource.data.email is string)
+        && (!changedKeys().hasAny(["photoUrl"]) || isValidPhoto(request.resource.data));
 
       allow delete: if false;
 

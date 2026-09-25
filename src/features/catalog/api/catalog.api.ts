@@ -29,6 +29,9 @@ import { isPresent } from "@/lib/utils";
 /** TMDB accepts at most 20 sub-requests in one append_to_response. */
 const APPEND_LIMIT = 20;
 
+/** Trailers in the app's language, plus ones with no language set (many official trailers have none). */
+const VIDEO_LANGUAGES = `${TMDB_CONFIG.language.split("-")[0]},null`;
+
 /** GET with the app's language on every request, so titles and genre names never mix languages. */
 const get = <T>(path: string, params: TmdbParams = {}, signal?: AbortSignal) =>
   tmdbFetch<T>(path, { params: { language: TMDB_CONFIG.language, ...params }, signal });
@@ -64,10 +67,85 @@ const fetchMixed = async (path: string, params: TmdbParams, signal?: AbortSignal
   return mapMultiResults(page.results, genres);
 };
 
-/** This week's most-watched movies and series. */
-export const fetchTrending = (signal?: AbortSignal) => fetchMixed("/trending/all/week", {}, signal);
+/** "YYYY-MM-DD" for `days` days before today, the date format TMDB's discover filters take. */
+const isoDateDaysAgo = (days: number) => new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
-export const fetchTopRatedSeries = (signal?: AbortSignal) => fetchSummaries("/tv/top_rated", {}, signal);
+const animeFilter = {
+  with_genres: CATALOG_CONFIG.anime.genreId,
+  with_original_language: CATALOG_CONFIG.anime.originalLanguage,
+  include_adult: false,
+};
+
+/** Every named list of titles the app shows. Add a row anywhere: add a key here, then call useCollection(key). */
+export type CollectionKey =
+  | "trending"
+  | "topRatedMovies"
+  | "topRatedSeries"
+  | "anime"
+  | "latestMovies"
+  | "latestWebSeries"
+  | "latestAnime"
+  | "latestTvShows";
+
+const COLLECTIONS: Record<CollectionKey, (signal?: AbortSignal) => Promise<Video[]>> = {
+  /** This week's most-watched movies and series. */
+  trending: signal => fetchMixed("/trending/all/week", {}, signal),
+  topRatedMovies: signal => fetchSummaries("/movie/top_rated", {}, signal),
+  topRatedSeries: signal => fetchSummaries("/tv/top_rated", {}, signal),
+  /** The most popular anime series of all time. */
+  anime: signal =>
+    fetchSummaries(
+      "/discover/tv",
+      { ...animeFilter, sort_by: "popularity.desc", "vote_count.gte": CATALOG_CONFIG.minVoteCount },
+      signal,
+    ),
+  /** Movies in cinemas now. */
+  latestMovies: signal => fetchSummaries("/movie/now_playing", { region: TMDB_CONFIG.region }, signal),
+  /** Streaming-service originals that premiered in the last year, most popular first. */
+  latestWebSeries: signal =>
+    fetchSummaries(
+      "/discover/tv",
+      {
+        with_networks: CATALOG_CONFIG.streamingNetworks.join("|"),
+        "first_air_date.gte": isoDateDaysAgo(CATALOG_CONFIG.latestWindowDays.webSeries),
+        "first_air_date.lte": isoDateDaysAgo(0),
+        "vote_count.gte": CATALOG_CONFIG.minVoteCountLatest,
+        sort_by: "popularity.desc",
+        include_adult: false,
+      },
+      signal,
+    ),
+  /** Anime with episodes airing lately, most popular first. */
+  latestAnime: signal =>
+    fetchSummaries(
+      "/discover/tv",
+      {
+        ...animeFilter,
+        "air_date.gte": isoDateDaysAgo(CATALOG_CONFIG.latestWindowDays.anime),
+        "air_date.lte": isoDateDaysAgo(0),
+        "vote_count.gte": CATALOG_CONFIG.minVoteCountLatest,
+        sort_by: "popularity.desc",
+      },
+      signal,
+    ),
+  /** Shows with new episodes lately (not anime, news, reality or talk), most popular first. */
+  latestTvShows: signal =>
+    fetchSummaries(
+      "/discover/tv",
+      {
+        "air_date.gte": isoDateDaysAgo(CATALOG_CONFIG.latestWindowDays.tvShows),
+        "air_date.lte": isoDateDaysAgo(0),
+        without_genres: [CATALOG_CONFIG.anime.genreId, ...CATALOG_CONFIG.excludedTvGenres].join(","),
+        "vote_count.gte": CATALOG_CONFIG.minVoteCount,
+        sort_by: "popularity.desc",
+        include_adult: false,
+      },
+      signal,
+    ),
+};
+
+/** One named list of titles; see CollectionKey. */
+export const fetchCollection = (key: CollectionKey, signal?: AbortSignal) => COLLECTIONS[key](signal);
 
 /** The most popular titles of one type in one genre. */
 export const fetchGenreRow = (type: VideoType, genreId: number, signal?: AbortSignal) =>
@@ -111,14 +189,14 @@ export const fetchTitle = async (id: string, signal?: AbortSignal): Promise<Titl
   if (parsed.type === "movie") {
     const [genres, detail] = await Promise.all([
       loadGenres(),
-      get<TmdbMovieDetail>(`/movie/${parsed.tmdbId}`, { append_to_response: "credits,release_dates,recommendations" }, signal),
+      get<TmdbMovieDetail>(`/movie/${parsed.tmdbId}`, { append_to_response: "credits,release_dates,recommendations,videos", include_video_language: VIDEO_LANGUAGES }, signal),
     ]);
     return mapMovieDetail(detail, genres);
   }
 
   const [genres, detail] = await Promise.all([
     loadGenres(),
-    get<TmdbTvDetail>(`/tv/${parsed.tmdbId}`, { append_to_response: "credits,content_ratings,recommendations" }, signal),
+    get<TmdbTvDetail>(`/tv/${parsed.tmdbId}`, { append_to_response: "credits,content_ratings,recommendations,videos", include_video_language: VIDEO_LANGUAGES }, signal),
   ]);
   const seasonNumbers = detail.seasons.map(season => season.season_number).filter(season => season > 0);
   const seasons = await fetchSeasons(parsed.tmdbId, seasonNumbers, signal);

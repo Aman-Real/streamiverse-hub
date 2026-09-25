@@ -1,22 +1,34 @@
-import { ArrowLeft, Maximize } from "lucide-react";
-import { useEffect, useMemo, useRef } from "react";
+import { ArrowLeft, Maximize, Minimize } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
+import { ROUTES } from "@/app/routes";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { PLAYBACK_CONFIG } from "@/config/playback.config";
+import { PLAYER_CONFIG } from "@/config/player.config";
 import type { Episode, Video } from "@/features/catalog/types";
 import MyListButton from "@/features/my-list/components/MyListButton";
+import UpNextCard from "@/features/player/components/UpNextCard";
 import type { PlaybackPosition, ProgressReportOptions } from "@/features/player/types";
-import { getCineSrcEmbedUrl } from "@/lib/cinesrc";
-import { cn } from "@/lib/utils";
+import { getPlayerEmbedUrl } from "@/lib/playerEmbed";
 
 interface VideoPlayerProps {
   video: Video;
   episode?: Episode;
+  /** Seconds to resume from; read once, when the player mounts. */
   startAt?: number;
+  /** Stream quality in lines (1080 or 720), from the HD Streaming setting. Read once, when the player mounts. */
+  quality: number;
   onClose: () => void;
   onProgressUpdate: (position: PlaybackPosition, options?: ProgressReportOptions) => void;
+  /** Series: the episode after this one. An "Up next" card offers it when this one ends. */
+  nextEpisode?: Episode;
+  /** Start the next episode by itself after a short countdown (the "Autoplay next episode" setting). */
+  autoplayNext?: boolean;
+  onPlayNext?: (episode: Episode) => void;
 }
 
-type CineSrcMessage = {
+type PlayerMessage = {
   type?: string;
   currentTime?: number;
   duration?: number;
@@ -24,88 +36,80 @@ type CineSrcMessage = {
   [key: string]: unknown;
 };
 
-const CineSrcPlayer = ({
+/** The embedded player in a frame with a title bar (Back, Save) and a status bar (quality, fullscreen). */
+const VideoPlayer = ({
   video,
   episode,
   startAt = 0,
+  quality,
   onClose,
   onProgressUpdate,
+  nextEpisode,
+  autoplayNext = false,
+  onPlayNext,
 }: VideoPlayerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [ended, setEnded] = useState(false);
+  const [upNextDismissed, setUpNextDismissed] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
+  const canFullscreen = typeof document !== "undefined" && document.fullscreenEnabled;
 
-  // The resume position is only used when the player is first mounted.
+  // The resume position and quality are only used when the player is first mounted.
   // Progress updates can cause the parent to re-render; they must not change
-  // the iframe URL and restart/reload the CineSrc player.
+  // the iframe URL and restart/reload the player.
   const initialStartAtRef = useRef(startAt);
+  const initialQualityRef = useRef(quality);
 
   const lastPositionRef = useRef<PlaybackPosition>({
     positionSeconds: startAt,
     durationSeconds: 0,
   });
 
-  const cinesrcUrl = useMemo(() => {
+  const embedUrl = useMemo(() => {
     try {
-      return getCineSrcEmbedUrl(video, episode, initialStartAtRef.current);
+      return getPlayerEmbedUrl(video, episode, { startAt: initialStartAtRef.current, quality: initialQualityRef.current });
     } catch {
       return null;
     }
   }, [video, episode]);
 
   useEffect(() => {
-    const handleMessage = (event: MessageEvent<CineSrcMessage>) => {
-      if (event.origin !== "https://cinesrc.st") return;
+    const { events } = PLAYER_CONFIG;
+    const handleMessage = (event: MessageEvent<PlayerMessage>) => {
+      if (event.origin !== PLAYER_CONFIG.origin) return;
 
       const message = event.data;
       if (!message || typeof message.type !== "string") return;
 
-      // Keep this logging while diagnosing source/provider playback failures.
-      // It can be removed after the player is confirmed stable.
-      if (
-        message.type === "cinesrc:error" ||
-        message.type === "cinesrc:sourceused" ||
-        message.type === "cinesrc:ready" ||
-        message.type === "cinesrc:play" ||
-        message.type === "cinesrc:pause" ||
-        message.type === "cinesrc:ended"
-      ) {
-        console.info("[CineSrc]", message.type, message);
-      }
-
-      if (message.type === "cinesrc:error") {
-        console.error("[CineSrc] Playback error:", message);
+      if (message.type === events.error) {
+        console.error("[Player] Playback error:", message);
         return;
       }
 
       const currentTime = Number(message.currentTime ?? message.position);
       const duration = Number(message.duration);
+      const knownDuration = Number.isFinite(duration) && duration > 0 ? duration : lastPositionRef.current.durationSeconds;
 
-      if (message.type === "cinesrc:timeupdate" && Number.isFinite(currentTime)) {
+      if (message.type === events.ended) {
         const next: PlaybackPosition = {
-          positionSeconds: Math.max(0, currentTime),
-          durationSeconds:
-            Number.isFinite(duration) && duration > 0
-              ? duration
-              : lastPositionRef.current.durationSeconds,
+          positionSeconds: Number.isFinite(currentTime) ? Math.max(0, currentTime) : knownDuration,
+          durationSeconds: knownDuration,
         };
-
-        lastPositionRef.current = next;
-        onProgressUpdate(next);
-      }
-
-      if (
-        (message.type === "cinesrc:pause" || message.type === "cinesrc:ended") &&
-        Number.isFinite(currentTime)
-      ) {
-        const next: PlaybackPosition = {
-          positionSeconds: Math.max(0, currentTime),
-          durationSeconds:
-            Number.isFinite(duration) && duration > 0
-              ? duration
-              : lastPositionRef.current.durationSeconds,
-        };
-
         lastPositionRef.current = next;
         onProgressUpdate(next, { immediate: true });
+        setEnded(true);
+        return;
+      }
+
+      if ((message.type === events.timeupdate || message.type === events.pause) && Number.isFinite(currentTime)) {
+        const next: PlaybackPosition = { positionSeconds: Math.max(0, currentTime), durationSeconds: knownDuration };
+        lastPositionRef.current = next;
+        // Some streams never send "ended"; reaching the last second counts as ending.
+        const reachedEnd = knownDuration > 0 && currentTime >= knownDuration - PLAYBACK_CONFIG.endedToleranceSeconds;
+        onProgressUpdate(next, { immediate: message.type === events.pause || reachedEnd });
+        setEnded(reachedEnd);
+        // Rewinding after the end brings the "Up next" card back the next time the episode ends.
+        if (!reachedEnd) setUpNextDismissed(false);
       }
     };
 
@@ -125,31 +129,42 @@ const CineSrcPlayer = ({
     return () => window.removeEventListener("pagehide", saveOnExit);
   }, [onProgressUpdate]);
 
+  useEffect(() => {
+    const onChange = () => setFullscreen(document.fullscreenElement === containerRef.current);
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+
   const toggleFullscreen = () => {
-    void containerRef.current?.requestFullscreen?.();
+    if (document.fullscreenElement) void document.exitFullscreen();
+    else void containerRef.current?.requestFullscreen?.();
   };
+
+  const playNext = useCallback(() => {
+    if (nextEpisode) onPlayNext?.(nextEpisode);
+  }, [nextEpisode, onPlayNext]);
+
+  const showUpNext = ended && !upNextDismissed && Boolean(nextEpisode && onPlayNext);
 
   return (
     <div
       ref={containerRef}
-      className="relative overflow-hidden rounded-3xl border bg-black shadow-2xl"
+      className="relative overflow-hidden rounded-2xl border bg-black shadow-2xl sm:rounded-3xl [&:fullscreen]:flex [&:fullscreen]:flex-col [&:fullscreen]:rounded-none"
     >
-      <div className="flex items-center gap-4 border-b border-white/10 bg-background/95 px-4 py-3 md:px-6">
-        <Button variant="outline" size="sm" onClick={onClose}>
+      <div className="flex items-center gap-3 border-b border-white/10 bg-background/95 px-3 py-3 sm:gap-4 md:px-6">
+        <Button variant="outline" size="sm" onClick={onClose} className="shrink-0 px-3 sm:px-4" aria-label="Back">
           <ArrowLeft />
-          Back
+          <span className="hidden sm:inline">Back</span>
         </Button>
 
-        <p className="min-w-0 truncate border-l pl-4 text-base font-medium text-foreground md:text-lg">
-          {video.title}
-          <span className="ml-2 text-sm font-normal text-muted-foreground">
-            {episode
-              ? `S${episode.season}:E${episode.number} · ${episode.title}`
-              : `${video.genre} · ${video.year}`}
-          </span>
-        </p>
+        <div className="min-w-0 flex-1 border-l pl-3 sm:pl-4">
+          <p className="truncate text-sm font-medium text-foreground sm:text-base md:text-lg">{video.title}</p>
+          <p className="truncate text-xs text-muted-foreground sm:text-sm">
+            {episode ? `S${episode.season}:E${episode.number} · ${episode.title}` : `${video.genre} · ${video.year}`}
+          </p>
+        </div>
 
-        <div className="ml-auto hidden gap-2 md:flex">
+        <div className="hidden shrink-0 gap-2 md:flex">
           {video.formats.map(format => (
             <Badge key={format} variant="glass" className="py-1">
               {format}
@@ -157,15 +172,15 @@ const CineSrcPlayer = ({
           ))}
         </div>
 
-        <MyListButton video={video} className="ml-auto md:ml-0" />
+        <MyListButton video={video} className="shrink-0" />
       </div>
 
-      <div className="relative aspect-video min-h-[20rem] bg-black">
-        {cinesrcUrl ? (
+      <div className="relative aspect-video w-full bg-black [:fullscreen_&]:flex-1">
+        {embedUrl ? (
           <iframe
-            title={`CineSrc player for ${video.title}`}
-            src={cinesrcUrl}
-            className={cn("absolute inset-0 h-full w-full border-0")}
+            title={`Player for ${video.title}`}
+            src={embedUrl}
+            className="absolute inset-0 h-full w-full border-0"
             allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
             allowFullScreen
             referrerPolicy="strict-origin-when-cross-origin"
@@ -180,16 +195,33 @@ const CineSrcPlayer = ({
             </div>
           </div>
         )}
+        {showUpNext && nextEpisode && (
+          <UpNextCard
+            episode={nextEpisode}
+            autoplay={autoplayNext}
+            seconds={PLAYBACK_CONFIG.upNextCountdownSeconds}
+            onPlay={playNext}
+            onCancel={() => setUpNextDismissed(true)}
+          />
+        )}
       </div>
 
-      <div className="flex items-center justify-between gap-2 border-t border-white/10 bg-background/95 px-4 py-3">
-        <div className="text-xs text-muted-foreground">Player: CineSrc · Preferred quality: 1080p</div>
-        <Button variant="ghost" size="icon" aria-label="Fullscreen" onClick={toggleFullscreen}>
-          <Maximize />
-        </Button>
+      <div className="flex items-center justify-between gap-2 border-t border-white/10 bg-background/95 px-3 py-2 sm:px-4 sm:py-3">
+        <p className="min-w-0 truncate text-xs text-muted-foreground">
+          Quality: {initialQualityRef.current}p{initialQualityRef.current >= PLAYBACK_CONFIG.quality.hd ? " (HD)" : ""}
+          {" · "}
+          <Link to={ROUTES.settings} className="text-primary-soft hover:underline">
+            Change in Settings
+          </Link>
+        </p>
+        {canFullscreen && (
+          <Button variant="ghost" size="icon" aria-label={fullscreen ? "Exit fullscreen" : "Fullscreen"} onClick={toggleFullscreen}>
+            {fullscreen ? <Minimize /> : <Maximize />}
+          </Button>
+        )}
       </div>
     </div>
   );
 };
 
-export default CineSrcPlayer;
+export default VideoPlayer;

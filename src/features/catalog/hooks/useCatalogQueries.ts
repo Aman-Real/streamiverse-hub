@@ -1,8 +1,11 @@
 import { keepPreviousData, useQueries, useQuery } from "@tanstack/react-query";
-import { CATALOG_CONFIG } from "@/config/catalog.config";
+import { CATALOG_CONFIG, type GenreOption } from "@/config/catalog.config";
 import * as catalogApi from "@/features/catalog/api/catalog.api";
+import type { CollectionKey } from "@/features/catalog/api/catalog.api";
 import type { Video, VideoCategory, VideoType } from "@/features/catalog/types";
+import { interleave } from "@/features/catalog/utils/catalog";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { isPresent } from "@/lib/utils";
 
 /*
  * Catalog data for components. Each hook caches one catalog.api call in React Query,
@@ -15,26 +18,22 @@ export const NO_VIDEOS: Video[] = [];
 /** Every catalog query key, in one place so invalidation never misses a spelling. */
 export const catalogKeys = {
   all: ["catalog"] as const,
-  trending: () => [...catalogKeys.all, "trending"] as const,
-  topRatedSeries: () => [...catalogKeys.all, "top-rated-series"] as const,
+  collection: (key: CollectionKey) => [...catalogKeys.all, "collection", key] as const,
   genreRow: (type: VideoType, genreId: number) => [...catalogKeys.all, "genre", type, genreId] as const,
   search: (type: VideoType | "all", query: string) => [...catalogKeys.all, "search", type, query] as const,
   title: (id: string) => [...catalogKeys.all, "title", id] as const,
 };
 
-/** This week's most-watched movies and series. Pass false to skip loading when the screen doesn't need it. */
-export const useTrending = (enabled = true) =>
+/** One named list of titles (see CollectionKey). Pass false to skip loading when the screen doesn't need it. */
+export const useCollection = (key: CollectionKey, enabled = true) =>
   useQuery({
-    queryKey: catalogKeys.trending(),
-    queryFn: ({ signal }) => catalogApi.fetchTrending(signal),
+    queryKey: catalogKeys.collection(key),
+    queryFn: ({ signal }) => catalogApi.fetchCollection(key, signal),
     enabled,
   });
 
-export const useTopRatedSeries = () =>
-  useQuery({
-    queryKey: catalogKeys.topRatedSeries(),
-    queryFn: ({ signal }) => catalogApi.fetchTopRatedSeries(signal),
-  });
+/** This week's most-watched movies and series. */
+export const useTrending = (enabled = true) => useCollection("trending", enabled);
 
 /** One title's details and recommendations. Waits while `id` is undefined. */
 export const useTitle = (id: string | undefined) =>
@@ -76,4 +75,28 @@ export const useGenreRows = (type: VideoType, enabled = true) => {
     .filter(category => category.items.length > 0);
 
   return { rows: categories, isLoading: results.some(result => result.isLoading) };
+};
+
+/**
+ * Popular movies and series in one genre choice, mixed together (movie, series, movie...).
+ * Shares its cache with the Movies and Series genre rows.
+ */
+export const useGenreMix = (option: GenreOption, enabled = true) => {
+  const sources = [
+    option.movieGenreId !== undefined ? { type: "movie" as const, genreId: option.movieGenreId } : null,
+    option.seriesGenreId !== undefined ? { type: "series" as const, genreId: option.seriesGenreId } : null,
+  ].filter(isPresent);
+
+  const results = useQueries({
+    queries: sources.map(({ type, genreId }) => ({
+      queryKey: catalogKeys.genreRow(type, genreId),
+      queryFn: ({ signal }: { signal: AbortSignal }) => catalogApi.fetchGenreRow(type, genreId, signal),
+      enabled,
+    })),
+  });
+
+  return {
+    videos: interleave(results.map(result => result.data ?? NO_VIDEOS)),
+    isLoading: results.some(result => result.isLoading),
+  };
 };

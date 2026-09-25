@@ -21,6 +21,15 @@ export type AppRoute = (typeof ROUTES)[keyof typeof ROUTES];
 /** Deep link to one title, e.g. titleRoute(ROUTES.explore, "movie-603") -> "/explore/movie-603". */
 export const titleRoute = (route: AppRoute, id: string) => `${route}/${id}`;
 
+/** Query param that carries the search box's text, e.g. "/?q=dune". */
+export const SEARCH_PARAM = "q";
+
+/** A route with a search query attached, e.g. searchRoute(ROUTES.home, "dune") -> "/?q=dune". */
+export const searchRoute = (route: AppRoute, query: string) => {
+  const trimmed = query.trim();
+  return trimmed ? `${route}?${new URLSearchParams({ [SEARCH_PARAM]: query })}` : route;
+};
+
 /** Query params the Watch Room reads to pick a series episode. */
 export const WATCH_PARAMS = { season: "season", episode: "episode" } as const;
 

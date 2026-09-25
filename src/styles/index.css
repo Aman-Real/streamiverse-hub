@@ -4,7 +4,11 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Every colour in the app lives here. Values are HSL triples so Tailwind can add alpha (bg-primary/20). */
+/*
+ * Every colour in the app lives here. Values are HSL triples so Tailwind can add alpha (bg-primary/20).
+ * One theme colour: --primary. Every accent (buttons, badges, stars, progress, focus rings, hover glow)
+ * is --primary or a tint of it, so changing this one value re-themes the whole site.
+ */
 @layer base {
   :root {
     --background: 222 24% 8%;
@@ -17,8 +21,9 @@
 
     --primary: 348 100% 66%;
     --primary-foreground: 0 0% 100%;
-    --primary-soft: 353 100% 86%;
-    --brand-coral: 6 100% 74%;
+    /* Lighter and deeper tints of the theme colour, for text on dark surfaces and gradients. */
+    --primary-soft: 348 100% 84%;
+    --primary-deep: 348 82% 52%;
 
     --secondary: 223 18% 16%;
     --secondary-foreground: 222 15% 80%;
@@ -35,11 +40,12 @@
     --ring: var(--primary);
     --radius: 0.75rem;
 
-    --rating: 46 97% 65%;
-    --success: 159 59% 47%;
-    --tone-lavender: 245 70% 83%;
-    --tone-amber: 26 80% 71%;
-    --tone-rose: 354 69% 80%;
+    /* Star ratings use the theme colour too. */
+    --rating: var(--primary);
+
+    /* Height of the fixed top navbar and of the bottom tab bar shown below the md breakpoint. */
+    --navbar-height: 72px;
+    --mobile-nav-height: 4rem;
 
     --sidebar-background: var(--card);
     --sidebar-foreground: var(--secondary-foreground);
@@ -56,24 +62,109 @@
   * {
     @apply border-border;
   }
+  html {
+    -webkit-text-size-adjust: 100%;
+    color-scheme: dark;
+  }
+  /* The page still scrolls (wheel, trackpad, touch, keyboard); only the scrollbar itself is hidden. */
+  html,
   body {
-    @apply bg-background text-foreground antialiased;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar {
+    display: none;
+  }
+  body {
+    @apply min-w-[16rem] bg-background text-foreground antialiased;
     font-family: 'Inter', sans-serif;
+  }
+  ::selection {
+    background-color: hsl(var(--primary) / 0.35);
   }
 }
 
 @layer components {
+  /* Shared horizontal frame: the navbar, every page and the footer line up on it at every screen size. */
+  .page-width {
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6 md:px-12 2xl:max-w-screen-2xl;
+  }
   /* Page frame below the fixed navbar, with the vertical rhythm between sections. */
   .page-container {
-    @apply mx-auto w-full max-w-7xl space-y-14 px-6 pb-20 pt-28 md:px-12;
+    @apply mx-auto w-full max-w-7xl space-y-10 px-4 pb-20 pt-24 sm:px-6 md:space-y-14 md:px-12 md:pt-28 2xl:max-w-screen-2xl;
+  }
+  /* Narrow reading column for account, settings and support pages. */
+  .page-container-narrow {
+    @apply mx-auto w-full max-w-3xl space-y-8 px-4 pb-20 pt-24 sm:px-6 md:pt-28;
   }
   .eyebrow {
     @apply text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-soft;
   }
-  /* Horizontal card track; set --cols to the number of visible cards. */
+
+  /*
+   * Horizontal card track; set --cols to the number of visible cards.
+   * The padding (cancelled by the negative margin) leaves room for the card hover lift, so a
+   * scaled card is never clipped by the scroll container. Cards snap into place when scrolled.
+   */
   .media-row {
-    @apply grid grid-flow-col gap-4 overflow-x-auto;
-    grid-auto-columns: calc((100% - (var(--cols) - 1) * 1rem) / var(--cols));
+    --row-gap: 0.75rem;
+    @apply -mx-2 -my-3 grid grid-flow-col overflow-x-auto overscroll-x-contain px-2 py-3;
+    gap: var(--row-gap);
+    grid-auto-columns: calc((100% - (var(--cols) - 1) * var(--row-gap)) / var(--cols));
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: 0.5rem;
+    scroll-behavior: smooth;
+  }
+  .media-row > * {
+    scroll-snap-align: start;
+  }
+  @media (min-width: 640px) {
+    .media-row {
+      --row-gap: 1rem;
+    }
+  }
+
+  /* Responsive poster grid for search results and saved titles. */
+  .media-grid {
+    @apply grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-6;
+  }
+
+  /*
+   * Hover lift for every title card: slightly bigger, outlined and glowing in the theme colour.
+   * Only on devices with a real pointer, so a tap on a phone never leaves a card stuck "hovered".
+   */
+  .card-lift {
+    transition:
+      transform 220ms ease,
+      box-shadow 220ms ease,
+      border-color 220ms ease;
+  }
+  .card-lift:focus-visible {
+    border-color: hsl(var(--primary));
+    box-shadow: 0 0 0 2px hsl(var(--primary) / 0.6);
+    outline: none;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .card-lift:hover {
+      z-index: 10;
+      transform: scale(1.05);
+      border-color: hsl(var(--primary));
+      box-shadow:
+        0 0 0 1px hsl(var(--primary) / 0.7),
+        0 18px 40px -14px hsl(var(--primary) / 0.6);
+    }
+    .card-lift:hover .card-lift-title {
+      color: hsl(var(--primary-soft));
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .card-lift {
+      transition: none;
+    }
+    .card-lift:hover {
+      transform: none;
+    }
   }
 }
 
@@ -87,18 +178,21 @@
   }
   .text-primary-soft { color: hsl(var(--primary-soft)); }
   .text-rating { color: hsl(var(--rating)); }
-  .bg-success { background-color: hsl(var(--success)); }
-  .bg-brand-gradient { background-image: linear-gradient(135deg, hsl(var(--brand-coral)), hsl(var(--primary))); }
+  .bg-brand-gradient { background-image: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-deep))); }
   .shadow-glow { box-shadow: 0 10px 30px -10px hsl(var(--primary) / 0.7); }
+  /* Space for the phone's home indicator under the bottom tab bar. */
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+  /* Keeps page content clear of the bottom tab bar, which only shows below the md breakpoint. */
+  .pb-mobile-nav { padding-bottom: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom, 0px)); }
+  @media (min-width: 768px) {
+    .pb-mobile-nav { padding-bottom: 0; }
+  }
 
-  /* Tinted chip: pair .tone with one .tone-* colour. */
+  /* Tinted chip in the theme colour. */
   .tone {
     color: hsl(var(--tone));
     background-color: hsl(var(--tone) / 0.12);
     border-color: hsl(var(--tone) / 0.3);
   }
   .tone-brand { --tone: var(--primary); color: hsl(var(--primary-soft)); }
-  .tone-lavender { --tone: var(--tone-lavender); }
-  .tone-amber { --tone: var(--tone-amber); }
-  .tone-rose { --tone: var(--tone-rose); }
 }

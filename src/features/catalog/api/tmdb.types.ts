@@ -54,13 +54,20 @@ export interface TmdbCredits {
   crew: { id: number; name: string; job: string }[];
 }
 
+/** Trailers, teasers and clips attached to a title. */
+export interface TmdbVideos {
+  results: { key: string; site: string; type: string; official?: boolean }[];
+}
+
 interface TmdbDetailFields {
   genres: TmdbGenre[];
   tagline: string;
   credits: TmdbCredits;
+  /** Present when requested with append_to_response=videos. */
+  videos?: TmdbVideos;
 }
 
-/** /movie/{id} with append_to_response=credits,release_dates,recommendations. */
+/** /movie/{id} with append_to_response=credits,release_dates,recommendations,videos. */
 export interface TmdbMovieDetail extends Omit<TmdbMovieSummary, "genre_ids">, TmdbDetailFields {
   runtime: number | null;
   release_dates: {
@@ -69,7 +76,7 @@ export interface TmdbMovieDetail extends Omit<TmdbMovieSummary, "genre_ids">, Tm
   recommendations: TmdbPage<TmdbMovieSummary>;
 }
 
-/** /tv/{id} with append_to_response=credits,content_ratings,recommendations. */
+/** /tv/{id} with append_to_response=credits,content_ratings,recommendations,videos. */
 export interface TmdbTvDetail extends Omit<TmdbTvSummary, "genre_ids">, TmdbDetailFields {
   episode_run_time: number[];
   number_of_seasons: number;

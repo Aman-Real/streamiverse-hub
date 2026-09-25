@@ -15,9 +15,20 @@ export interface Account {
   planLabel: string;
   /** e.g. "Jan 2026"; null for guests and until the profile loads. */
   memberSince: string | null;
+  /** The uploaded photo, else the sign-in provider's (e.g. Google) photo; null when there's neither. */
+  photoUrl: string | null;
+  /** True when the member uploaded their own photo, so it can be removed. */
+  hasUploadedPhoto: boolean;
 }
 
-const GUEST: Account = { isGuest: true, ...GUEST_ACCOUNT, planLabel: PLAN_LABELS.free, memberSince: null };
+const GUEST: Account = {
+  isGuest: true,
+  ...GUEST_ACCOUNT,
+  planLabel: PLAN_LABELS.free,
+  memberSince: null,
+  photoUrl: null,
+  hasUploadedPhoto: false,
+};
 
 const formatMemberSince = (date: Date) => date.toLocaleDateString("en-US", { month: "short", year: "numeric" });
 
@@ -37,6 +48,8 @@ export const useAccount = (): Account => {
       email: profile?.email || user.email,
       planLabel: PLAN_LABELS[profile?.plan ?? "free"],
       memberSince: profile?.createdAt ? formatMemberSince(profile.createdAt) : null,
+      photoUrl: profile?.photoUrl ?? user.photoUrl ?? null,
+      hasUploadedPhoto: Boolean(profile?.photoUrl),
     };
   }, [user, profile]);
 };

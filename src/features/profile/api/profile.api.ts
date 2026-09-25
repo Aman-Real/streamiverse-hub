@@ -1,4 +1,5 @@
 import {
+  deleteField,
   getDoc,
   onSnapshot,
   serverTimestamp,
@@ -9,18 +10,20 @@ import {
 } from "firebase/firestore";
 import type { AuthUser } from "@/features/auth/types";
 import type { UserProfile } from "@/features/profile/types";
-import { readDate, readString } from "@/lib/firestoreData";
+import { readDate, readOptionalString, readString } from "@/lib/firestoreData";
 import { firestoreRefs } from "@/lib/firestoreRefs";
 
 /*
  * Every read and write of users/{uid} goes through this file. firestore.rules lets the browser create the
- * document once, on the free plan, and afterwards change only displayName and email; the plan is server-owned.
+ * document once, on the free plan, and afterwards change only displayName, email and photoUrl; the plan is
+ * server-owned.
  */
 
 const toProfile = (data: DocumentData): UserProfile => ({
   displayName: readString(data.displayName),
   email: readString(data.email),
   plan: data.plan === "pro" ? "pro" : "free",
+  photoUrl: readOptionalString(data.photoUrl) || null,
   createdAt: readDate(data.createdAt),
 });
 
@@ -65,4 +68,10 @@ export const ensureUserProfile = (user: AuthUser): Promise<void> => {
 export const saveDisplayName = async (user: AuthUser) => {
   await ensureUserProfile(user);
   await updateDoc(firestoreRefs.user(user.uid), { displayName: user.name });
+};
+
+/** Saves the profile photo (a data URL), or removes it when `photoUrl` is null. */
+export const savePhotoUrl = async (user: AuthUser, photoUrl: string | null) => {
+  await ensureUserProfile(user);
+  await updateDoc(firestoreRefs.user(user.uid), { photoUrl: photoUrl ?? deleteField() });
 };

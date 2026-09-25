@@ -9,6 +9,7 @@ import type {
   TmdbSeason,
   TmdbSummary,
   TmdbTvDetail,
+  TmdbVideos,
 } from "@/features/catalog/api/tmdb.types";
 import type { CastMember, Episode, TitleDetails, Video } from "@/features/catalog/types";
 import { toEpisodeId, toTitleId } from "@/features/catalog/utils/titleId";
@@ -114,6 +115,17 @@ const mapEpisode = (titleId: string, episode: TmdbEpisode, fallbackRuntime: numb
   thumbnail: episode.still_path ? imageUrl(episode.still_path, imageSizes.still) : fallbackThumbnail,
 });
 
+/** YouTube key of the best trailer: an official trailer first, then any trailer, then a teaser. */
+export const pickTrailerKey = (videos: TmdbVideos | undefined): string | undefined => {
+  const youtube = videos?.results.filter(video => video.site === "YouTube" && video.key) ?? [];
+  const trailers = youtube.filter(video => video.type === "Trailer");
+  return (
+    trailers.find(video => video.official)?.key ??
+    trailers[0]?.key ??
+    youtube.find(video => video.type === "Teaser")?.key
+  );
+};
+
 /** The configured region's certification, e.g. "PG-13". */
 const movieRating = (detail: TmdbMovieDetail) =>
   detail.release_dates.results
@@ -130,6 +142,7 @@ export const mapMovieDetail = (detail: TmdbMovieDetail, genres: GenreMap): Title
     tagline: detail.tagline || undefined,
     runtime: detail.runtime ?? 0,
     rating: movieRating(detail),
+    trailerKey: pickTrailerKey(detail.videos),
     cast: mapCredits(
       detail.credits,
       detail.credits.crew.filter(member => member.job === "Director").map(member => member.name),
@@ -158,6 +171,7 @@ export const mapTvDetail = (detail: TmdbTvDetail, seasons: TmdbSeason[], genres:
       tagline: detail.tagline || undefined,
       runtime: typicalRuntime || episodes.find(episode => episode.runtime > 0)?.runtime || 0,
       rating: seriesRating(detail),
+      trailerKey: pickTrailerKey(detail.videos),
       seasonCount: new Set(episodes.map(episode => episode.season)).size || detail.number_of_seasons,
       episodes,
       cast: mapCredits(detail.credits, detail.created_by.map(creator => creator.name), "Creator"),

@@ -1,3 +1,5 @@
+import type { EpisodeRef } from "@/app/routes";
+import type { GenreOption } from "@/config/catalog.config";
 import type { Episode, Video, VideoCategory, VideoType } from "@/features/catalog/types";
 
 /** Pure functions over a video list. No React, no state - trivially unit-testable. */
@@ -56,4 +58,60 @@ export const getResumeLabel = (video: Video): string => {
   return episode
     ? `S${episode.season}:E${episode.number} • ${timeLeft(video)}`
     : [timeLeft(video), ...video.formats.slice(0, 1)].join(" • ");
+};
+
+/**
+ * The episode after `current` in airing order (the next one in the season, else the first of the next
+ * season); undefined after the last aired episode. Works even if `current` itself is no longer listed.
+ */
+export const getNextEpisode = (video: Video, current: EpisodeRef): Episode | undefined =>
+  video.episodes?.find(
+    episode => episode.season > current.season || (episode.season === current.season && episode.number > current.episode),
+  );
+
+/** Merges lists by taking one item from each in turn: [a1, b1, a2, b2, ...]. Duplicate ids keep their first place. */
+export const interleave = (lists: Video[][]): Video[] => {
+  const seen = new Set<string>();
+  const merged: Video[] = [];
+  const longest = Math.max(0, ...lists.map(list => list.length));
+  for (let index = 0; index < longest; index += 1) {
+    for (const list of lists) {
+      const video = list[index];
+      if (video && !seen.has(video.id)) {
+        seen.add(video.id);
+        merged.push(video);
+      }
+    }
+  }
+  return merged;
+};
+
+/** Rows with every title that an earlier row already shows removed; rows left empty are dropped. */
+export const dedupeCategories = (categories: VideoCategory[]): VideoCategory[] => {
+  const shown = new Set<string>();
+  return categories
+    .map(category => {
+      const items = category.items.filter(video => !shown.has(video.id));
+      items.forEach(video => shown.add(video.id));
+      return { ...category, items };
+    })
+    .filter(category => category.items.length > 0);
+};
+
+/** The genre choice a TMDB genre name belongs to, e.g. "Action & Adventure" -> Action. */
+export const findGenreOption = (options: readonly GenreOption[], genreName: string): GenreOption | undefined =>
+  options.find(option => option.label === genreName || option.aliases?.includes(genreName));
+
+/** The genre choice that appears most often across `videos` (e.g. the viewer's history); undefined when none match. */
+export const favouriteGenreOption = (options: readonly GenreOption[], videos: Video[]): GenreOption | undefined => {
+  const counts = new Map<string, number>();
+  for (const video of videos) {
+    const option = findGenreOption(options, video.genre);
+    if (option) counts.set(option.id, (counts.get(option.id) ?? 0) + 1);
+  }
+  let best: GenreOption | undefined;
+  for (const option of options) {
+    if ((counts.get(option.id) ?? 0) > (best ? counts.get(best.id) ?? 0 : 0)) best = option;
+  }
+  return best;
 };

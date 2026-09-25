@@ -58,6 +58,8 @@ export interface Video {
   seasonCount?: number;
   episodes?: Episode[];
   cast?: CastMember[];
+  /** YouTube video key of the official trailer, when TMDB has one (title details only). */
+  trailerKey?: string;
 }
 
 /** A titled row of videos, as rendered by <CategoryRow />. */

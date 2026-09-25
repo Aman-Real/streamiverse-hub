@@ -1,6 +1,7 @@
 import type { EpisodeRef } from "@/app/routes";
 import { PLAYBACK_CONFIG } from "@/config/playback.config";
 import type { Episode, Video } from "@/features/catalog/types";
+import { getNextEpisode } from "@/features/catalog/utils/catalog";
 import { toEpisodeId } from "@/features/catalog/utils/titleId";
 import { fromTitleSnapshot, toTitleSnapshot } from "@/features/catalog/utils/titleSnapshot";
 import type { PlaybackPosition } from "@/features/player/types";
@@ -75,7 +76,10 @@ export const toWatchedVideo = (entry: ProgressEntry): Video => {
 /** Started but not finished: what Continue Watching shows. */
 export const isInProgress = (video: Video) => video.progress > 0 && video.progress < 100;
 
-/** The episode to play: the one in the URL, else the one the viewer was watching, else the first. */
+/**
+ * The episode to play: the one in the URL, else the one the viewer was watching (or, if they finished it,
+ * the one after it), else the first.
+ */
 export const resolveEpisode = (
   video: Video,
   requested: EpisodeRef | null,
@@ -84,11 +88,13 @@ export const resolveEpisode = (
   const episodes = video.episodes ?? [];
   const find = (season: number | null, number: number | null) =>
     episodes.find(episode => episode.season === season && episode.number === number);
-  return (
-    (requested ? find(requested.season, requested.episode) : undefined) ??
-    (entry ? find(entry.season, entry.episode) : undefined) ??
-    episodes[0]
-  );
+  const fromHistory = () => {
+    if (!entry || entry.season === null || entry.episode === null) return undefined;
+    const last = find(entry.season, entry.episode);
+    if (entry.progress < 100) return last;
+    return getNextEpisode(video, { season: entry.season, episode: entry.episode }) ?? last;
+  };
+  return (requested ? find(requested.season, requested.episode) : undefined) ?? fromHistory() ?? episodes[0];
 };
 
 /** Seconds to resume from: where the viewer stopped this movie or episode, or 0 if finished or not started. */
@@ -98,4 +104,36 @@ export const resumePosition = (entry: ProgressEntry | undefined, episode: Episod
     ? entry.season === episode.season && entry.episode === episode.number
     : entry.season === null;
   return sameItem ? entry.positionSeconds : 0;
+};
+
+/** What the Watch Room button does for this viewer, decided from their most recent progress entry. */
+export type WatchRoomPlan =
+  /** Nothing watched yet: suggest the latest movies, web series, anime and TV shows. */
+  | { kind: "discover" }
+  /** Finished a series episode; the title's episode list is needed to find the next one. */
+  | { kind: "loading" }
+  /** Resume the unfinished movie or episode, or start the next episode. */
+  | { kind: "play"; titleId: string; episode?: EpisodeRef }
+  /** Finished a movie, or the last episode of a series: suggest related titles. */
+  | { kind: "finished"; titleId: string };
+
+/**
+ * The Watch Room decision. `latest` is the most recently watched entry; `title` is its full details
+ * (only needed once a series episode is finished). `titleFailed` means the details couldn't be loaded.
+ */
+export const planWatchRoom = (
+  latest: ProgressEntry | undefined,
+  title: Video | undefined,
+  titleFailed = false,
+): WatchRoomPlan => {
+  if (!latest) return { kind: "discover" };
+  const titleId = latest.title.id;
+  if (latest.progress < 100) return { kind: "play", titleId };
+
+  const { season, episode } = latest;
+  if (latest.title.type === "movie" || season === null || episode === null) return { kind: "finished", titleId };
+  if (!title) return titleFailed ? { kind: "finished", titleId } : { kind: "loading" };
+
+  const next = getNextEpisode(title, { season, episode });
+  return next ? { kind: "play", titleId, episode: { season: next.season, episode: next.number } } : { kind: "finished", titleId };
 };
